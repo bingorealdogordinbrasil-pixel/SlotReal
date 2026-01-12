@@ -21,32 +21,37 @@ const User = mongoose.model('User', new mongoose.Schema({
     saldo: { type: Number, default: 0.00 }
 }));
 
+// --- LÓGICA DO TEMPO GLOBAL (PARA NÃO RESETAR NO F5) ---
+let tempoGlobal = 120; 
+setInterval(() => {
+    if (tempoGlobal > 0) tempoGlobal--;
+    else tempoGlobal = 120;
+}, 1000);
+
+app.get('/api/tempo', (req, res) => {
+    res.json({ tempo: tempoGlobal });
+});
+
 // CONFIG MERCADO PAGO
 const client = new MercadoPagoConfig({ 
     accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' 
 });
 const payment = new Payment(client);
 
-// --- MOTOR DO JOGO (LÓGICA DE LUCRO PARA VOCÊ) ---
+// --- MOTOR DO JOGO (LUCRO TOTAL) ---
 app.post('/api/spin', async (req, res) => {
     try {
         const { user, bets } = req.body;
         const userDb = await User.findOne({ user });
         if (!userDb) return res.json({ success: false });
 
-        // LÓGICA: Encontra o menor valor apostado entre as cores
         let menorValor = Math.min(...bets);
         let coresQueLucram = [];
-
-        // Filtra as cores que têm esse menor valor (ex: as que estão com 0)
         bets.forEach((valor, i) => {
             if (valor === menorValor) coresQueLucram.push(i);
         });
 
-        // Sorteia uma cor entre as que dão lucro para a casa
         const corAlvo = coresQueLucram[Math.floor(Math.random() * coresQueLucram.length)];
-        
-        // Se o cara apostou na cor que saiu, ele ganha 5x. Mas o sistema escolheu a de menor valor!
         const premio = bets[corAlvo] * 5.0;
         const novoSaldo = Number((userDb.saldo + premio).toFixed(2));
         
@@ -110,4 +115,4 @@ app.post('/api/save-saldo', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 SERVIDOR RODANDO`));
+app.listen(PORT, () => console.log(`🚀 TUDO PRONTO`));
