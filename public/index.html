@@ -3,256 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Premium Money Slot - Full Neon</title>
+    <title>SlotReal - Premium Neon</title>
     <style>
         body {
             background: radial-gradient(circle, #1a1a1a 0%, #050505 100%);
-            display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; color: white;
         }
 
-        /* BARRA SUPERIOR */
-        .top-bar {
-            width: 100%; background: rgba(10, 10, 10, 0.95); padding: 10px 0; display: flex; justify-content: space-around; align-items: center; border-bottom: 2px solid #d4af37; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 100;
-        }
+        /* TELAS */
+        #tela-login { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; width: 100%; }
+        #tela-jogo { display: none; width: 100%; flex-direction: column; align-items: center; }
 
-        .saldo-header { text-align: left; }
+        /* DESIGN LOGIN */
+        .login-card { background: #111; padding: 30px; border-radius: 25px; border: 1px solid #d4af37; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 0 30px rgba(212,175,55,0.2); }
+        .login-card input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: white; box-sizing: border-box; }
+        .btn-auth { width: 100%; padding: 15px; background: linear-gradient(180deg, #d4af37 0%, #aa8412 100%); border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; color: #000; }
+
+        /* BARRA SUPERIOR JOGO */
+        .top-bar { width: 100%; background: rgba(10, 10, 10, 0.95); padding: 10px 0; display: flex; justify-content: space-around; align-items: center; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 100; }
         .saldo-header span { color: #2ecc71; font-weight: 900; font-size: 22px; }
 
-        .btn-deposito-top { background: #009ee3; color: white; border: none; padding: 10px 15px; border-radius: 50px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 3px 0 #005a82; }
-        .btn-saque-top { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 50px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 3px 0 #c0392b; }
-
         /* CONTAINER JOGO */
-        .casino-container {
-            background: rgba(20, 20, 20, 0.98); padding: 20px; border-radius: 30px; width: 90%; max-width: 380px; border: 1px solid rgba(212, 175, 55, 0.3); box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: center; margin-top: 20px; position: relative;
-        }
-
-        .grid-container { background: #000; padding: 8px; border-radius: 15px; border: 1px solid #333; margin-bottom: 20px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
-        .cell { height: 35px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; border: 1px solid rgba(255,255,255,0.05); }
+        .casino-container { background: rgba(20, 20, 20, 0.98); padding: 20px; border-radius: 30px; width: 90%; max-width: 380px; border: 1px solid rgba(212, 175, 55, 0.3); text-align: center; margin-top: 20px; }
+        .grid-container { background: #000; padding: 8px; border-radius: 15px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-bottom: 20px; }
+        .cell { height: 35px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; }
         .bet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
-        .bet-btn { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px 0; cursor: pointer; border: 1px solid transparent; }
-        .btn-spin { width: 100%; background: linear-gradient(180deg, #d4af37 0%, #aa8412 100%); color: #000; border: none; padding: 18px; border-radius: 40px; font-weight: 900; font-size: 20px; cursor: pointer; box-shadow: 0 5px 0 #7a5c00; }
+        .bet-btn { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px 0; cursor: pointer; border-bottom: 3px solid transparent; }
+        .btn-spin { width: 100%; background: linear-gradient(180deg, #d4af37 0%, #aa8412 100%); color: #000; border: none; padding: 18px; border-radius: 40px; font-weight: 900; font-size: 20px; cursor: pointer; }
 
         /* MODAIS */
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; width: 85%; max-width: 320px; padding: 25px; border-radius: 25px; z-index: 2000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.9); }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; width: 85%; max-width: 320px; padding: 25px; border-radius: 25px; z-index: 2000; text-align: center; }
         .modal input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
-        .copy-box { background: #f4f4f4; border: 1px solid #ddd; padding: 12px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 15px 0; }
-        .btn-copy { background: #009ee3; color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
-
-        #msg-overlay { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.96); width: 85%; padding: 25px 5px; border-radius: 25px; border: 2px solid #d4af37; z-index: 1000; }
     </style>
 </head>
 <body>
 
-<div class="top-bar">
-    <div class="saldo-header">
-        <div style="font-size: 10px; color: #aaa;" id="user-display">CARREGANDO...</div>
-        <span>R$ <span id="saldo-display">0.00</span></span>
+    <div id="tela-login">
+        <div class="login-card">
+            <h2 id="auth-titulo" style="color:#d4af37">Login</h2>
+            <input type="text" id="auth-user" placeholder="Usuário">
+            <input type="password" id="auth-pass" placeholder="Senha">
+            <div id="campo-fone" style="display:none;"><input type="text" id="auth-fone" placeholder="WhatsApp (DDD+Número)"></div>
+            <button class="btn-auth" onclick="autenticar()" id="btn-auth-texto">ENTRAR NO JOGO</button>
+            <p onclick="alternarAuth()" id="toggle-texto" style="font-size:12px; margin-top:15px; cursor:pointer; color:#aaa;">Não tem conta? Cadastre-se</p>
+        </div>
     </div>
-    <div style="display: flex; gap: 5px;">
-        <button class="btn-deposito-top" onclick="abrirModalDeposito()">+ DEPÓSITO</button>
-        <button class="btn-saque-top" onclick="abrirSaque()">SAQUE</button>
-    </div>
-</div>
 
-<div class="casino-container">
-    <div id="msg-overlay"><h2 id="msg-text"></h2></div>
+    <div id="tela-jogo">
+        <div class="top-bar">
+            <div class="saldo-header">
+                <div style="font-size: 10px; color: #aaa;" id="display-nome-user">PLAYER</div>
+                <span>R$ <span id="saldo-display">0.00</span></span>
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="abrirModal('deposito-modal')" style="background:#009ee3; border:none; padding:10px; border-radius:20px; color:white; font-weight:bold;">+ DEPÓSITO</button>
+                <button onclick="abrirModal('saque-modal')" style="background:#e74c3c; border:none; padding:10px; border-radius:20px; color:white; font-weight:bold;">SAQUE</button>
+            </div>
+        </div>
+
+        <div class="casino-container">
+            <div class="grid-container" id="slot-grid"></div>
+            <div class="bet-grid" id="bet-container"></div>
+            <button class="btn-spin" onclick="startSpin()">INICIAR JOGO</button>
+            <p onclick="logout()" style="color:#666; font-size:12px; margin-top:15px; cursor:pointer;">Sair da conta</p>
+        </div>
+    </div>
 
     <div id="deposito-modal" class="modal">
-        <h3 style="margin:0;">Depositar via PIX</h3>
-        <p style="font-size: 12px; color: #666;">Mínimo R$ 10,00</p>
-        <input type="number" id="valor-deposito" placeholder="Valor R$" value="10">
-        <button onclick="gerarPagamento()" style="background:#009ee3; color:white; border:none; padding:15px; border-radius:10px; width:100%; font-weight:bold;">GERAR PIX</button>
-        <div id="area-pix" style="display:none;">
-            <img id="qr-img" src="" style="width:150px; margin:15px 0;">
-            <div class="copy-box">
-                <input type="text" id="qr-copy" readonly style="font-size: 10px;">
-                <button class="btn-copy" id="btnCopy" onclick="copyPix()">COPIAR CÓDIGO</button>
-            </div>
+        <h3>Depositar via PIX</h3>
+        <input type="number" id="val-dep" value="10" placeholder="Valor R$">
+        <button onclick="gerarPix()" style="background:#009ee3; color:white; border:none; padding:12px; width:100%; border-radius:10px;">GERAR PIX</button>
+        <div id="pix-resultado" style="display:none; margin-top:15px;">
+            <img id="qr-img" src="" style="width:150px;">
+            <button onclick="copiarPix()" style="background:#222; color:white; width:100%; padding:10px; margin-top:10px;">Copiar Código</button>
         </div>
         <button onclick="fecharModais()" style="margin-top:10px; border:none; background:none; color:#999;">Fechar</button>
     </div>
 
     <div id="saque-modal" class="modal">
-        <h3 style="margin:0;">Solicitar Saque</h3>
-        <input type="text" id="chave-pix" placeholder="Sua Chave PIX">
-        <input type="number" id="valor-saque" placeholder="Valor (R$)">
-        <button onclick="solicitarSaque()" style="background:#27ae60; color:white; border:none; padding:15px; border-radius:10px; width:100%; font-weight:bold;">ENVIAR SOLICITAÇÃO</button>
-        <button onclick="fecharModais()" style="margin-top:10px; border:none; background:none; color:#999;">Cancelar</button>
+        <h3>Solicitar Saque</h3>
+        <input type="text" id="chave-pix" placeholder="Chave PIX">
+        <input type="number" id="valor-saque" placeholder="Valor R$">
+        <button onclick="solicitarSaque()" style="background:#27ae60; color:white; border:none; padding:12px; width:100%; border-radius:10px;">PEDIR SAQUE</button>
+        <button onclick="fecharModais()" style="margin-top:10px; border:none; background:none; color:#999;">Fechar</button>
     </div>
-
-    <div class="grid-container" id="slot-grid"></div>
-    <div class="bet-grid" id="bet-container"></div>
-    <div style="display: flex; gap: 12px; align-items: center;">
-        <div onclick="clearBets()" style="color: #666; font-size: 12px; cursor: pointer; font-weight: bold;">LIMPAR</div>
-        <button class="btn-spin" onclick="startSpin()">INICIAR JOGO</button>
-    </div>
-</div>
 
 <script>
-    const SEU_WHATSAPP = "55119XXXXXXXX"; 
+    let modoLogin = true;
+    let state = { user: '', pass: '', saldo: 0, bets: new Array(10).fill(0), isSpinning: false, currentIndex: 0, pixCopia: '' };
     const CORES = ['#FFFFFF', '#222222', '#FFFF00', '#00FF00', '#FF69B4', '#FF0000', '#0000FF', '#808080', '#800080', '#8B4513'];
     const BORDER_MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
-    
-    let state = { 
-        user: localStorage.getItem('usuarioLogado') || "Convidado",
-        saldo: 0.00, 
-        bets: new Array(10).fill(0), 
-        isSpinning: false, 
-        currentIndex: 0 
-    };
 
-    async function init() {
-        if(!localStorage.getItem('usuarioLogado')) {
-            window.location.href = "login.html"; // Redireciona se não tiver logado
-            return;
-        }
-        
-        document.getElementById('user-display').innerText = "OLÁ, " + state.user.toUpperCase();
-        
-        // Carregar saldo real do banco de dados
-        await atualizarSaldoLocal();
-
-        const grid = document.getElementById('slot-grid');
-        grid.innerHTML = '';
-        for (let i = 0; i < 64; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell'; cell.id = `cell-${i}`;
-            const bPos = BORDER_MAP.indexOf(i);
-            if (bPos !== -1) {
-                let corIdx = bPos % 10;
-                cell.style.background = CORES[corIdx];
-                cell.innerHTML = "R$5";
-            } else { cell.style.opacity = "0"; }
-            grid.appendChild(cell);
-        }
-
-        const betArea = document.getElementById('bet-container');
-        betArea.innerHTML = '';
-        CORES.forEach((cor, idx) => {
-            const btn = document.createElement('div');
-            btn.className = 'bet-btn'; btn.style.borderBottom = `3px solid ${cor}`;
-            btn.innerHTML = `<div style="width:12px; height:12px; background:${cor}; margin:0 auto 5px; border-radius:50%;"></div><span id="bet-count-${idx}">0</span>`;
-            btn.onclick = () => { if(!state.isSpinning && state.saldo >= 0.50) { state.bets[idx]++; state.saldo -= 0.50; updateUI(); } };
-            betArea.appendChild(btn);
-        });
+    // AUTH
+    function alternarAuth() {
+        modoLogin = !modoLogin;
+        document.getElementById('auth-titulo').innerText = modoLogin ? "Login" : "Cadastro";
+        document.getElementById('btn-auth-texto').innerText = modoLogin ? "ENTRAR NO JOGO" : "CRIAR CONTA AGORA";
+        document.getElementById('campo-fone').style.display = modoLogin ? "none" : "block";
+        document.getElementById('toggle-texto').innerText = modoLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça Login";
     }
 
-    async function atualizarSaldoLocal() {
-        // Pega o saldo mais atualizado do banco
+    async function autenticar() {
+        const user = document.getElementById('auth-user').value;
+        const pass = document.getElementById('auth-pass').value;
+        const fone = document.getElementById('auth-fone').value;
+        const rota = modoLogin ? '/auth/login' : '/auth/cadastro';
+
+        const res = await fetch(rota, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user, pass, fone })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            state.user = user; state.pass = pass; state.saldo = data.saldo;
+            localStorage.setItem('u', user); localStorage.setItem('p', pass);
+            mostrarJogo();
+        } else { alert(data.message || "Erro!"); }
+    }
+
+    function mostrarJogo() {
+        document.getElementById('tela-login').style.display = 'none';
+        document.getElementById('tela-jogo').style.display = 'flex';
+        document.getElementById('display-nome-user').innerText = "OLÁ, " + state.user.toUpperCase();
+        initJogo();
+        setInterval(sincronizarSaldo, 8000); // Checa se caiu PIX a cada 8s
+    }
+
+    // JOGO
+    function initJogo() {
+        const grid = document.getElementById('slot-grid'); grid.innerHTML = '';
+        for (let i = 0; i < 64; i++) {
+            const cell = document.createElement('div'); cell.className = 'cell'; cell.id = `cell-${i}`;
+            const bPos = BORDER_MAP.indexOf(i);
+            if (bPos !== -1) { cell.style.background = CORES[bPos % 10]; cell.innerHTML = "R$5"; }
+            else { cell.style.opacity = "0"; }
+            grid.appendChild(cell);
+        }
+        const betArea = document.getElementById('bet-container'); betArea.innerHTML = '';
+        CORES.forEach((cor, idx) => {
+            const btn = document.createElement('div'); btn.className = 'bet-btn'; btn.style.borderBottom = `3px solid ${cor}`;
+            btn.innerHTML = `<div style="width:10px; height:10px; background:${cor}; margin:0 auto 5px; border-radius:50%;"></div><span id="bc-${idx}">0</span>`;
+            btn.onclick = () => { if(!state.isSpinning && state.saldo >= 0.5) { state.bets[idx]++; state.saldo -= 0.5; updateUI(); } };
+            betArea.appendChild(btn);
+        });
+        updateUI();
+    }
+
+    async function sincronizarSaldo() {
         const res = await fetch('/auth/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ user: state.user, pass: localStorage.getItem('senhaLogada') })
+            body: JSON.stringify({ user: state.user, pass: state.pass })
         });
         const data = await res.json();
-        if(data.success) {
-            state.saldo = data.saldo;
-            updateUI();
-        }
+        if(data.success) { state.saldo = data.saldo; updateUI(); }
     }
 
-    function abrirModalDeposito() { document.getElementById('deposito-modal').style.display = 'block'; }
-
-    async function gerarPagamento() {
-        const valor = document.getElementById('valor-deposito').value;
-        try {
-            const res = await fetch('/gerar-pix', { 
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userLogado: state.user, valor: valor })
-            });
-            const data = await res.json();
-            document.getElementById('qr-img').src = "data:image/jpeg;base64," + data.imagem_qr;
-            document.getElementById('qr-copy').value = data.copia_e_cola;
-            document.getElementById('area-pix').style.display = 'block';
-        } catch (e) { alert("Erro ao conectar com servidor de pagamento"); }
-    }
-
-    async function solicitarSaque() {
-        const chave = document.getElementById('chave-pix').value;
-        const valor = parseFloat(document.getElementById('valor-saque').value);
-
-        if(!chave || valor < 10) { alert("Mínimo R$ 10,00"); return; }
-        if(valor > state.saldo) { alert("Saldo insuficiente"); return; }
-
-        const res = await fetch('/api/solicitar-saque', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ user: state.user, chave: chave, valor: valor })
-        });
-
-        if(res.ok) {
-            state.saldo -= valor;
-            await salvarSaldoNoBanco();
-            alert("Solicitação enviada! Aguarde o pagamento.");
-            fecharModais();
-        }
-    }
-
-    async function salvarSaldoNoBanco() {
+    async function salvarSaldo() {
         await fetch('/api/save-saldo', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ user: state.user, saldo: state.saldo })
         });
-        updateUI();
-    }
-
-    function copyPix() {
-        const input = document.getElementById('qr-copy');
-        input.select();
-        navigator.clipboard.writeText(input.value);
-        alert("Copiado! Pague no seu banco.");
-    }
-
-    function fecharModais() { 
-        document.getElementById('deposito-modal').style.display = 'none'; 
-        document.getElementById('saque-modal').style.display = 'none'; 
     }
 
     function updateUI() {
         document.getElementById('saldo-display').innerText = state.saldo.toFixed(2);
-        state.bets.forEach((count, idx) => { document.getElementById(`bet-count-${idx}`).innerText = count; });
+        state.bets.forEach((c, i) => { document.getElementById(`bc-${i}`).innerText = c; });
     }
+
+    // FINANCEIRO
+    async function gerarPix() {
+        const valor = document.getElementById('val-dep').value;
+        const res = await fetch('/gerar-pix', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userLogado: state.user, valor })
+        });
+        const data = await res.json();
+        document.getElementById('qr-img').src = "data:image/jpeg;base64," + data.imagem_qr;
+        state.pixCopia = data.copia_e_cola;
+        document.getElementById('pix-resultado').style.display = 'block';
+    }
+
+    function copiarPix() { navigator.clipboard.writeText(state.pixCopia); alert("Código Copiado!"); }
+
+    async function solicitarSaque() {
+        const chave = document.getElementById('chave-pix').value;
+        const valor = parseFloat(document.getElementById('valor-saque').value);
+        if(valor > state.saldo || valor < 10) return alert("Erro no valor");
+        
+        await fetch('/api/solicitar-saque', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user: state.user, chave, valor })
+        });
+        state.saldo -= valor; await salvarSaldo(); fecharModais(); alert("Saque solicitado!");
+    }
+
+    function abrirModal(id) { document.getElementById(id).style.display = 'block'; }
+    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 
     function startSpin() {
         if (state.isSpinning || state.bets.reduce((a, b) => a + b, 0) === 0) return;
         state.isSpinning = true;
-        let corAlvoIndex = Math.floor(Math.random() * 10);
-        let targets = [];
-        BORDER_MAP.forEach((id, idx) => { if(idx % 10 === corAlvoIndex) targets.push(idx); });
+        let corAlvo = Math.floor(Math.random() * 10);
+        let targets = []; BORDER_MAP.forEach((id, idx) => { if(idx % 10 === corAlvo) targets.push(idx); });
         let targetIdx = targets[Math.floor(Math.random() * targets.length)];
-        let totalSteps = (BORDER_MAP.length * 3) + targetIdx;
-        let currentStep = 0; let speed = 30;
+        let steps = (BORDER_MAP.length * 3) + targetIdx;
+        let current = 0; let speed = 30;
 
         const loop = async () => {
             document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "none";
             state.currentIndex = (state.currentIndex + 1) % BORDER_MAP.length;
-            document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "0 0 20px #fff";
-            currentStep++;
-            if (currentStep < totalSteps) {
-                if (currentStep > totalSteps - 20) speed += 15;
-                setTimeout(loop, speed);
-            } else {
+            document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "0 0 15px #fff";
+            current++;
+            if (current < steps) { if (current > steps - 20) speed += 15; setTimeout(loop, speed); } 
+            else {
                 state.isSpinning = false;
-                let premio = state.bets[corAlvoIndex] * 5.00;
-                if(premio > 0) { 
-                    state.saldo += premio; 
-                    alert("GANHOU R$ " + premio.toFixed(2)); 
-                }
-                state.bets.fill(0); 
-                await salvarSaldoNoBanco();
+                let premio = state.bets[corAlvo] * 5.0;
+                if(premio > 0) { state.saldo += premio; alert("GANHOU R$ " + premio.toFixed(2)); }
+                state.bets.fill(0); await salvarSaldo(); updateUI();
             }
         };
         loop();
     }
 
-    function clearBets() { if(!state.isSpinning) { state.saldo += state.bets.reduce((a, b) => a + b, 0) * 0.50; state.bets.fill(0); updateUI(); } }
+    function logout() { localStorage.clear(); window.location.reload(); }
 
-    init();
-
-    // Checar saldo a cada 10 segundos para ver se o PIX caiu
-    setInterval(atualizarSaldoLocal, 10000);
+    // Auto-login
+    if(localStorage.getItem('u')) {
+        state.user = localStorage.getItem('u'); state.pass = localStorage.getItem('p');
+        autenticar();
+    }
 </script>
 </body>
 </html>
