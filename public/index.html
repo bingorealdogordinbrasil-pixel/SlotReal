@@ -19,6 +19,7 @@
         .bet-btn { background: #222; padding: 12px 0; border-radius: 8px; cursor: pointer; text-align: center; font-size: 11px; border-bottom: 4px solid transparent; transition: 0.2s; }
         .timer-box { text-align: center; margin-top: 10px; }
         .timer-val { color: #d4af37; font-size: 28px; font-weight: bold; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 25px; border-radius: 20px; z-index: 1000; width: 280px; text-align: center; }
     </style>
 </head>
 <body>
@@ -35,14 +36,33 @@
     <div id="tela-jogo">
         <div class="top-bar">
             <div>SALDO: <span id="s-display" style="color:#2ecc71; font-weight:bold;">0.00</span></div>
+            <button onclick="openM('m-pix')" style="width:80px; background:#009ee3; border:none; color:white; border-radius:5px; padding:5px;">DEPÓSITO</button>
+            <button onclick="openM('m-saque')" style="width:80px; background:#e74c3c; border:none; color:white; border-radius:5px; padding:5px;">SAQUE</button>
         </div>
+
         <div class="timer-box">
             <div class="timer-val" id="timer">02:00</div>
         </div>
+
         <div class="grid-container">
             <div class="grid" id="grid"></div>
         </div>
+
         <div class="bet-area" id="bet-area"></div>
+    </div>
+
+    <div id="m-pix" class="modal">
+        <h3>Depositar</h3>
+        <input type="number" id="v-pix" value="20" style="color:black; background:#eee;">
+        <button class="btn-gold" onclick="gerarP()">GERAR PIX</button>
+        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:15px;">FECHAR</button>
+    </div>
+
+    <div id="m-saque" class="modal">
+        <h3>Sacar</h3>
+        <input type="text" id="ch-saque" placeholder="Chave PIX" style="color:black; background:#eee;">
+        <button class="btn-gold" onclick="sacar()">PEDIR SAQUE</button>
+        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:15px;">CANCELAR</button>
     </div>
 
 <script>
@@ -57,7 +77,7 @@
         const data = await res.json();
         if(data.success) { 
             state.u = u; state.p = p; state.s = data.saldo; 
-            if(data.bets) state.b = data.bets; // AQUI RECUPERA AS CORES DO F5
+            if(data.bets) state.b = data.bets; // Recupera as apostas do banco (F5)
             startG(); 
         } else alert("Erro!");
     }
@@ -86,8 +106,12 @@
             btn.onclick = async () => { 
                 if(!bloqueado && state.s >= 1.0) { 
                     state.b[i] += 1.0; state.s -= 1.0; update(); 
-                    // SALVA SALDO E APOSTAS NO BANCO NA HORA
-                    await fetch('/api/save-saldo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets: state.b})});
+                    // Salva as apostas junto com o saldo
+                    await fetch('/api/save-saldo', { 
+                        method:'POST', 
+                        headers:{'Content-Type':'application/json'}, 
+                        body:JSON.stringify({user:state.u, saldo:state.s, bets: state.b})
+                    });
                 }
             };
             ba.appendChild(btn);
@@ -128,6 +152,9 @@
         document.getElementById('s-display').innerText = state.s.toFixed(2); 
         state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v; }); 
     }
+
+    function openM(id) { document.getElementById(id).style.display = 'block'; }
+    function closeM() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 </script>
 </body>
 </html>
