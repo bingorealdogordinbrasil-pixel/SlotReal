@@ -7,10 +7,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// SENHA QUE VOCÊ VAI USAR NO PAINEL
+// CONFIGURAÇÕES
 const SENHA_GERENTE = "admin123"; 
-
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
+
+// CONEXÃO BANCO
 mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
 
 const User = mongoose.model('User', new mongoose.Schema({
@@ -20,58 +21,61 @@ const User = mongoose.model('User', new mongoose.Schema({
     saldo: { type: Number, default: 0.00 }
 }));
 
-// --- ROTAS DO GERENTE (ADMIN) ---
+// CONFIG MERCADO PAGO
+const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
+const payment = new Payment(client);
 
-// Essa rota lista os usuários
-app.post('/admin/users', async (req, res) => {
+// --- ROTA DE GERAR PIX (REINSTALADA) ---
+app.post('/gerar-pix', async (req, res) => {
     try {
-        const { senha } = req.body;
-        if (senha !== SENHA_GERENTE) {
-            return res.status(401).json({ success: false, message: "Senha Inválida" });
-        }
-        const users = await User.find({}, 'user saldo fone');
-        res.json({ success: true, users });
-    } catch (err) {
-        res.status(500).json({ success: false, message: "Erro interno" });
-    }
-});
-
-// Essa rota dá o bônus
-app.post('/admin/add-bonus', async (req, res) => {
-    try {
-        const { senha, targetUser, valor } = req.body;
-        if (senha !== SENHA_GERENTE) {
-            return res.status(401).json({ success: false, message: "Senha Inválida" });
-        }
+        const { valor, userLogado } = req.body;
+        const result = await payment.create({ body: {
+            transaction_amount: parseFloat(valor),
+            description: 'Deposito SlotReal',
+            payment_method_id: 'pix',
+            external_reference: userLogado,
+            payer: { email: 'pix@slotreal.com' }
+        }});
         
-        const user = await User.findOneAndUpdate(
-            { user: targetUser },
-            { $inc: { saldo: parseFloat(valor) } },
-            { new: true }
-        );
-
-        if (user) res.json({ success: true, novoSaldo: user.saldo });
-        else res.json({ success: false, message: "Usuário não encontrado" });
-    } catch (err) {
-        res.status(500).json({ success: false, message: "Erro ao processar bônus" });
+        res.json({ 
+            copia_e_cola: result.point_of_interaction.transaction_data.qr_code, 
+            imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 
+        });
+    } catch (e) {
+        console.error("ERRO PIX:", e);
+        res.status(500).json({ error: "Erro ao gerar PIX" });
     }
 });
 
-// --- RESTO DAS ROTAS (LOGIN, SPIN, ETC) ---
+// --- ROTAS DO GERENTE ---
+app.post('/admin/users', async (req, res) => {
+    if (req.body.senha !== SENHA_GERENTE) return res.status(401).json({ success: false });
+    const users = await User.find({}, 'user saldo fone');
+    res.json({ success: true, users });
+});
 
+app.post('/admin/add-bonus', async (req, res) => {
+    const { senha, targetUser, valor } = req.body;
+    if (senha !== SENHA_GERENTE) return res.status(401).json({ success: false });
+    const user = await User.findOneAndUpdate({ user: targetUser }, { $inc: { saldo: parseFloat(valor) } }, { new: true });
+    if (user) res.json({ success: true, novoSaldo: user.saldo });
+    else res.json({ success: false, message: "User não existe" });
+});
+
+// --- ROTAS DO JOGO ---
 app.post('/auth/cadastro', async (req, res) => {
     try {
         const novo = new User({ ...req.body, saldo: 0.00 });
         await novo.save();
         res.json({ success: true, saldo: 0.00 });
-    } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.post('/auth/login', async (req, res) => {
     const { user, pass } = req.body;
     const conta = await User.findOne({ user, pass });
     if (conta) res.json({ success: true, saldo: conta.saldo });
-    else res.json({ success: false, message: "Dados incorretos" });
+    else res.json({ success: false });
 });
 
 app.post('/api/spin', async (req, res) => {
@@ -79,7 +83,6 @@ app.post('/api/spin', async (req, res) => {
     const userDb = await User.findOne({ user });
     if (!userDb) return res.json({ success: false });
     
-    // Sorteio simples (escolhe cor que ninguém apostou)
     let corAlvo = bets.findIndex(b => b === 0);
     if(corAlvo === -1) corAlvo = Math.floor(Math.random() * 10);
     
@@ -94,5 +97,15 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/saque', async (req, res) => {
+    const { user, valor, chave } = req.body;
+    const u = await User.findOne({ user });
+    if (u && u.saldo >= valor && valor >= 10) {
+        await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
+        console.log(`SAQUE: ${user} - R$${valor} - PIX: ${chave}`);
+        res.json({ success: true });
+    } else res.json({ success: false });
+});
+
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 SERVIDOR RODANDO NA PORTA ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 TUDO ONLINE NA PORTA ${PORT}`));
