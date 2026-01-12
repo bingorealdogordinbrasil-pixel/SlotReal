@@ -3,88 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slot Real - Ganhe no PIX</title>
+    <title>Slot Real - Cores e Prêmios</title>
     <style>
-        /* Estilo Geral */
+        /* Estilo com 10 Cores Diferentes e Vibrantes */
         body {
-            background-color: #1a1a1a;
+            background: radial-gradient(circle, #1a1a2e, #16213e, #0f3460);
             color: white;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        /* Máquina de Slot */
-        .slot-machine {
-            background: linear-gradient(180deg, #444, #222);
-            border: 5px solid #ffd700;
-            border-radius: 20px;
-            padding: 20px;
+            font-family: 'Arial Black', sans-serif;
             text-align: center;
-            box-shadow: 0 0 20px #ffd700;
+            margin: 0;
+            padding: 20px;
         }
 
-        .reels {
+        .container {
+            max-width: 400px;
+            margin: auto;
+            border: 8px solid #ffd700;
+            border-radius: 30px;
+            background: #000;
+            padding: 20px;
+            box-shadow: 0 0 30px #ff00ff;
+        }
+
+        /* Cores Alternadas para os Reels */
+        .reels-container {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
         }
 
         .reel {
-            background: white;
-            color: black;
-            font-size: 50px;
             width: 80px;
             height: 100px;
+            background: #fff;
+            border-radius: 10px;
+            font-size: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
-            border: 3px solid #666;
+            border: 4px solid #00fff2;
+            transition: transform 0.1s;
         }
 
-        /* Botões */
+        /* Botão de Girar com Efeito */
         .btn-spin {
-            background: #ff4500;
+            background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+            background-size: 400%;
             color: white;
+            padding: 20px;
+            width: 100%;
             border: none;
-            padding: 15px 40px;
-            font-size: 20px;
-            font-weight: bold;
-            border-radius: 50px;
+            border-radius: 15px;
+            font-size: 24px;
             cursor: pointer;
-            box-shadow: 0 5px #900;
+            font-weight: bold;
+            animation: colors 10s linear infinite;
         }
 
-        .btn-spin:active {
-            box-shadow: 0 2px #900;
-            transform: translateY(3px);
+        @keyframes colors {
+            0% { background-position: 0%; }
+            100% { background-position: 400%; }
         }
 
+        /* Botão de PIX */
         .btn-pix {
             background: #009ee3;
             color: white;
+            padding: 15px;
+            width: 100%;
             border: none;
-            padding: 15px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 10px;
+            border-radius: 15px;
+            margin-top: 15px;
+            font-size: 18px;
             cursor: pointer;
-            margin-top: 20px;
+            box-shadow: 0 4px #005a82;
         }
 
-        /* Saldo */
-        .balance {
-            font-size: 24px;
-            margin: 20px 0;
-            color: #ffd700;
-        }
-
-        /* Modal do PIX */
+        /* Modal do QR Code */
         #modalPix {
             display: none;
             position: fixed;
@@ -95,96 +91,93 @@
             color: black;
             padding: 20px;
             border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            z-index: 9999;
-            width: 300px;
+            z-index: 1000;
+            width: 280px;
+            box-shadow: 0 0 50px #000;
         }
 
-        #modalPix img { width: 200px; height: 200px; }
-        #modalPix textarea { width: 100%; height: 60px; margin: 10px 0; resize: none; }
-        .close-modal { background: red; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+        #modalPix img { width: 100%; }
+        #modalPix input { width: 100%; padding: 10px; box-sizing: border-box; }
+
+        .saldo-box {
+            font-size: 30px;
+            color: #00ff00;
+            margin: 15px 0;
+            text-shadow: 2px 2px #000;
+        }
     </style>
 </head>
 <body>
 
-    <h1>🎰 SLOT REAL 🎰</h1>
+    <div class="container">
+        <h1 style="color: #ffd700; text-shadow: 2px 2px #ff0000;">SLOT REAL</h1>
+        
+        <div class="saldo-box">SALDO: R$ <span id="valSaldo">0.00</span></div>
 
-    <div class="balance">Saldo: R$ <span id="saldo">0.00</span></div>
-
-    <div class="slot-machine">
-        <div class="reels">
-            <div id="reel1" class="reel">🍒</div>
-            <div id="reel2" class="reel">🍒</div>
-            <div id="reel3" class="reel">🍒</div>
+        <div class="reels-container">
+            <div id="r1" class="reel" style="border-color: #ff0000;">💎</div>
+            <div id="r2" class="reel" style="border-color: #00ff00;">💎</div>
+            <div id="r3" class="reel" style="border-color: #0000ff;">💎</div>
         </div>
-        <button class="btn-spin" onclick="girar()">GIRAR (R$ 1.00)</button>
+
+        <button class="btn-spin" onclick="girar()">GIRAR R$ 5,00</button>
+        <button class="btn-pix" onclick="obterPix()">DEPOSITAR R$ 10,00</button>
     </div>
 
-    <button class="btn-pix" onclick="abrirPix()">DEPOSITAR R$ 5,00 (PIX)</button>
-
     <div id="modalPix">
-        <h2>Pague o PIX</h2>
-        <p>Escaneie o código abaixo:</p>
-        <img id="imgQr" src="" alt="QR Code PIX">
-        <p>Ou copie o código:</p>
-        <textarea id="textoCopia" readonly></textarea>
-        <button class="close-modal" onclick="fecharModal()">FECHAR</button>
+        <h3>Pague via PIX</h3>
+        <img id="qrImg" src="">
+        <p>Copia e Cola:</p>
+        <input type="text" id="qrText" readonly>
+        <button onclick="document.getElementById('modalPix').style.display='none'" style="margin-top:10px; padding:10px; background:red; color:white; border:none; border-radius:5px;">FECHAR</button>
     </div>
 
     <script>
         let saldo = 0;
-        const emojis = ['🍒', '🍋', '🔔', '💎', '7️⃣'];
+        const itens = ['🍒', '🔔', '💎', '7️⃣', '🍋', '⭐', '🍀'];
 
-        // Lógica do Jogo
+        function atualizar() {
+            document.getElementById('valSaldo').innerText = saldo.toFixed(2);
+        }
+
         function girar() {
-            if (saldo < 1) {
-                alert("Saldo insuficiente! Deposite para jogar.");
+            if (saldo < 5) {
+                alert("Deposite para continuar!");
                 return;
             }
-            
-            saldo -= 1;
-            atualizarSaldo();
+            saldo -= 5;
+            atualizar();
 
-            const r1 = emojis[Math.floor(Math.random() * emojis.length)];
-            const r2 = emojis[Math.floor(Math.random() * emojis.length)];
-            const r3 = emojis[Math.floor(Math.random() * emojis.length)];
+            const res1 = itens[Math.floor(Math.random() * itens.length)];
+            const res2 = itens[Math.floor(Math.random() * itens.length)];
+            const res3 = itens[Math.floor(Math.random() * itens.length)];
 
-            document.getElementById('reel1').innerText = r1;
-            document.getElementById('reel2').innerText = r2;
-            document.getElementById('reel3').innerText = r3;
+            document.getElementById('r1').innerText = res1;
+            document.getElementById('r2').innerText = res2;
+            document.getElementById('r3').innerText = res3;
 
-            if (r1 === r2 && r2 === r3) {
-                alert("PARABÉNS! Você ganhou R$ 10,00!");
-                saldo += 10;
-                atualizarSaldo();
+            if (res1 === res2 && res2 === res3) {
+                alert("JACKPOT! Ganhou R$ 50,00!");
+                saldo += 50;
+                atualizar();
             }
         }
 
-        function atualizarSaldo() {
-            document.getElementById('saldo').innerText = saldo.toFixed(2);
-        }
-
-        // Lógica do PIX (Conecta com seu server.js)
-        async function abrirPix() {
+        async function obterPix() {
             try {
-                const res = await fetch('/gerar-pix', { method: 'POST' });
-                const data = await res.json();
-
+                const response = await fetch('/gerar-pix', { method: 'POST' });
+                const data = await response.json();
+                
                 if (data.imagem_qr) {
-                    document.getElementById('imgQr').src = "data:image/jpeg;base64," + data.imagem_qr;
-                    document.getElementById('textoCopia').value = data.copia_e_cola;
+                    document.getElementById('qrImg').src = "data:image/jpeg;base64," + data.imagem_qr;
+                    document.getElementById('qrText').value = data.copia_e_cola;
                     document.getElementById('modalPix').style.display = 'block';
                 } else {
-                    alert("Erro ao gerar PIX. Verifique seu Access Token no server.js");
+                    alert("Erro no servidor. Verifique o Access Token!");
                 }
-            } catch (err) {
-                alert("Erro ao conectar com o servidor.");
+            } catch (e) {
+                alert("Erro ao conectar!");
             }
-        }
-
-        function fecharModal() {
-            document.getElementById('modalPix').style.display = 'none';
         }
     </script>
 </body>
