@@ -15,15 +15,14 @@ const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     fone: String,
-    saldo: { type: Number, default: 0.00 } // FORÇADO ZERADO AQUI
+    saldo: { type: Number, default: 0.00 } // ZERO NO BANCO
 }));
 
-// ROTA PRINCIPAL - Garante que o site abra o index.html sem erro
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// LÓGICA DE GIRO (QUEM GANHA PERDE, QUEM PERDE PERDEU)
+// LÓGICA DE GIRO (MENOR VOLUME = CASA GANHA)
 app.post('/api/spin', async (req, res) => {
     try {
         const { user, bets } = req.body;
@@ -44,21 +43,20 @@ app.post('/api/spin', async (req, res) => {
         }
 
         const premio = bets[corAlvo] * 5.0; 
-        const novoSaldoOficial = Number((userDb.saldo + premio).toFixed(2));
-        await User.findOneAndUpdate({ user }, { saldo: novoSaldoOficial });
+        const novoSaldo = Number((userDb.saldo + premio).toFixed(2));
+        await User.findOneAndUpdate({ user }, { saldo: novoSaldo });
 
-        res.json({ success: true, corAlvo, novoSaldo: novoSaldoOficial, ganhou: premio > 0 });
+        res.json({ success: true, corAlvo, novoSaldo, ganhou: premio > 0 });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// CADASTRO COM SALDO ZERO ABSOLUTO
 app.post('/auth/cadastro', async (req, res) => {
     try {
         const novo = new User({ 
             user: req.body.user, 
             pass: req.body.pass, 
             fone: req.body.fone, 
-            saldo: 0.00 // ZERADO AQUI TAMBÉM
+            saldo: 0.00 // ZERO NO CADASTRO
         });
         await novo.save();
         res.json({ success: true, saldo: 0.00 });
@@ -77,14 +75,15 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
-// SAQUE
+// SAQUE (Mínimo R$ 10)
 app.post('/api/saque', async (req, res) => {
     const { user, valor, chave } = req.body;
     const u = await User.findOne({ user });
     if (u && u.saldo >= valor && valor >= 10) {
         await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
+        console.log(`PEDIDO DE SAQUE: ${user} | Valor: R$${valor} | PIX: ${chave}`);
         res.json({ success: true });
-    } else res.json({ success: false, message: "Saldo insuficiente" });
+    } else res.json({ success: false, message: "Saldo insuficiente!" });
 });
 
 // MERCADO PAGO
@@ -98,10 +97,13 @@ app.post('/gerar-pix', async (req, res) => {
             description: 'Deposito SlotReal',
             payment_method_id: 'pix',
             external_reference: req.body.userLogado,
-            payer: { email: 'pix@slot.com' }
+            payer: { email: 'contato@slot.com' }
         }});
-        res.json({ copia_e_cola: result.point_of_interaction.transaction_data.qr_code, imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 });
+        res.json({ 
+            copia_e_cola: result.point_of_interaction.transaction_data.qr_code, 
+            imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 
+        });
     } catch (e) { res.status(500).json(e); }
 });
 
-app.listen(10000, () => console.log("🔥 MOTOR LIGADO"));
+app.listen(10000, () => console.log("🚀 SISTEMA ZERADO E RODANDO"));
