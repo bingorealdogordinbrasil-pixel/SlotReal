@@ -3,283 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal - Sistema Completo</title>
+    <title>SlotReal - Premium</title>
     <style>
-        body { background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; color: white; }
-        
-        /* TELAS */
-        #tela-login { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; width: 100%; }
-        #tela-jogo { display: none; width: 100%; flex-direction: column; align-items: center; }
-
-        /* DESIGN LOGIN */
-        .login-card { background: #111; padding: 30px; border-radius: 25px; border: 1px solid #d4af37; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 0 30px rgba(212,175,55,0.2); }
-        .login-card input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #333; background: #000; color: white; box-sizing: border-box; }
-        .btn-auth { width: 100%; padding: 15px; background: linear-gradient(180deg, #d4af37 0%, #aa8412 100%); border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; color: #000; }
-
-        /* BARRA SUPERIOR */
-        .top-bar { width: 100%; background: rgba(10, 10, 10, 0.95); padding: 10px 0; display: flex; justify-content: space-around; align-items: center; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 100; }
-        .saldo-header span { color: #2ecc71; font-weight: 900; font-size: 22px; }
-
-        /* CONTAINER JOGO */
-        .casino-container { background: rgba(20, 20, 20, 0.98); padding: 20px; border-radius: 30px; width: 90%; max-width: 380px; border: 1px solid rgba(212, 175, 55, 0.3); text-align: center; margin-top: 20px; position: relative; }
-        .grid-container { background: #000; padding: 8px; border-radius: 15px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-bottom: 20px; }
-        .cell { height: 35px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; }
-        .bet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
-        .bet-btn { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px 0; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
-        .btn-spin { width: 100%; background: linear-gradient(180deg, #d4af37 0%, #aa8412 100%); color: #000; border: none; padding: 18px; border-radius: 40px; font-weight: 900; font-size: 20px; cursor: pointer; box-shadow: 0 5px 0 #7a5c00; }
-        
-        /* AVISO AUTO */
-        #aviso-auto { display: none; color: #ff4757; font-size: 11px; font-weight: bold; margin-bottom: 10px; animation: blink 1s infinite; }
-        @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.4;} 100% {opacity: 1;} }
-
-        /* MODAIS */
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; width: 85%; max-width: 320px; padding: 25px; border-radius: 25px; z-index: 2000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.8); }
-        .modal input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
+        body { background: #050505; color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        #tela-login, #tela-jogo { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        #tela-jogo { display: none; }
+        .card { background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; text-align: center; margin-top: 50px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; background: #222; color: white; }
+        button { width: 100%; padding: 15px; background: #d4af37; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: black; }
+        .top-bar { width: 100%; background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; background: #000; padding: 10px; border-radius: 10px; margin: 20px 0; }
+        .cell { width: 35px; height: 35px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; }
+        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 320px; }
+        .bet-btn { background: #222; padding: 10px 0; border-radius: 8px; cursor: pointer; font-size: 12px; border-bottom: 3px solid transparent; }
+        #aviso-auto { color: red; font-size: 12px; display: none; margin-bottom: 10px; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 20px; border-radius: 15px; z-index: 100; text-align: center; width: 280px; }
     </style>
 </head>
 <body>
 
     <div id="tela-login">
-        <div class="login-card">
-            <h2 id="auth-titulo" style="color:#d4af37; margin-bottom: 20px;">ENTRAR</h2>
-            <input type="text" id="auth-user" placeholder="Usuário">
-            <input type="password" id="auth-pass" placeholder="Senha">
-            <div id="campo-fone" style="display:none;"><input type="text" id="auth-fone" placeholder="WhatsApp"></div>
-            <button class="btn-auth" onclick="autenticar()" id="btn-auth-texto">ACESSAR CONTA</button>
-            <p onclick="alternarAuth()" id="toggle-texto" style="font-size:12px; margin-top:15px; cursor:pointer; color:#aaa;">Novo por aqui? Cadastre-se</p>
+        <div class="card">
+            <h2 id="t-auth">LOGIN</h2>
+            <input type="text" id="u" placeholder="Usuário">
+            <input type="password" id="p" placeholder="Senha">
+            <div id="f-area" style="display:none"><input type="text" id="f" placeholder="WhatsApp"></div>
+            <button onclick="auth()">ENTRAR</button>
+            <p onclick="toggle()" style="font-size:12px; cursor:pointer; color:#aaa; margin-top:15px;">Cadastrar conta</p>
         </div>
     </div>
 
     <div id="tela-jogo">
         <div class="top-bar">
-            <div class="saldo-header">
-                <div id="user-display" style="font-size: 10px; color: #aaa;">PLAYER</div>
-                <span>R$ <span id="saldo-display">0.00</span></span>
-            </div>
-            <div style="display: flex; gap: 5px;">
-                <button onclick="abrirModal('deposito-modal')" style="background:#009ee3; border:none; padding:10px 15px; border-radius:20px; color:white; font-weight:bold; font-size:12px;">DEPÓSITO</button>
-                <button onclick="abrirModal('saque-modal')" style="background:#e74c3c; border:none; padding:10px 15px; border-radius:20px; color:white; font-weight:bold; font-size:12px;">SAQUE</button>
-            </div>
+            <div>SALDO: <span id="s-display" style="color:#2ecc71; font-weight:bold;">0.00</span></div>
+            <button onclick="showM()" style="width:100px; padding:5px;">DEPÓSITO</button>
         </div>
-
-        <div class="casino-container">
-            <div id="aviso-auto">🤖 MODO AUTOMÁTICO ATIVADO</div>
-            <div class="grid-container" id="slot-grid"></div>
-            <div class="bet-grid" id="bet-container"></div>
-            <button class="btn-spin" onclick="startSpin()">INICIAR JOGO</button>
-            <p onclick="logout()" style="color:#444; font-size:11px; margin-top:15px; cursor:pointer;">Sair da conta</p>
+        <div class="card" style="width: 340px; margin-top: 20px;">
+            <div id="aviso-auto">🤖 MODO AUTOMÁTICO ATIVO</div>
+            <div class="grid" id="grid"></div>
+            <div class="bet-area" id="bet-area"></div>
+            <button onclick="spin()" style="margin-top:20px;">GIRAR</button>
         </div>
     </div>
 
-    <div id="deposito-modal" class="modal">
-        <h3>Depositar via PIX</h3>
-        <input type="number" id="val-dep" value="10" min="10">
-        <button onclick="gerarPix()" style="background:#009ee3; color:white; border:none; padding:15px; width:100%; border-radius:10px; font-weight:bold;">GERAR QR CODE</button>
-        <div id="pix-resultado" style="display:none; margin-top:15px;">
-            <img id="qr-img" src="" style="width:150px;">
-            <button onclick="copiarPix()" style="background:#222; color:white; width:100%; padding:10px; margin-top:10px; border:none; border-radius:5px;">Copiar Código PIX</button>
+    <div id="m-pix" class="modal">
+        <h3>Depósito PIX</h3>
+        <input type="number" id="v-pix" value="10" style="color:black; background:#eee;">
+        <button onclick="gerarP()">GERAR</button>
+        <div id="res-pix" style="display:none">
+            <img id="q-img" style="width:150px; margin:10px;">
+            <button onclick="copyP()" style="background:#222; color:white;">COPIAR CÓDIGO</button>
         </div>
-        <button onclick="fecharModais()" style="margin-top:15px; border:none; background:none; color:#999;">Fechar</button>
-    </div>
-
-    <div id="saque-modal" class="modal">
-        <h3>Solicitar Saque</h3>
-        <p style="font-size:11px; color: #666;">Mínimo R$ 10,00</p>
-        <input type="text" id="chave-pix" placeholder="Sua Chave PIX">
-        <input type="number" id="valor-saque" placeholder="Valor R$">
-        <button onclick="solicitarSaque()" style="background:#27ae60; color:white; border:none; padding:15px; width:100%; border-radius:10px; font-weight:bold;">SOLICITAR AGORA</button>
-        <button onclick="fecharModais()" style="margin-top:10px; border:none; background:none; color:#999;">Cancelar</button>
+        <button onclick="closeM()" style="background:none; color:red;">FECHAR</button>
     </div>
 
 <script>
-    let modoLogin = true;
-    let autoSpinOn = false;
-    let state = { user: '', pass: '', saldo: 0, bets: new Array(10).fill(0), isSpinning: false, currentIndex: 0, pixCopia: '' };
-    const CORES = ['#FFFFFF', '#222222', '#FFFF00', '#00FF00', '#FF69B4', '#FF0000', '#0000FF', '#808080', '#800080', '#8B4513'];
-    const BORDER_MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
+    let isLog = true;
+    let auto = false;
+    let state = { u: '', p: '', s: 0, b: new Array(10).fill(0), spinning: false, idx: 0, pix: '' };
+    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
+    const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
 
-    // --- AUTENTICAÇÃO ---
-    function alternarAuth() {
-        modoLogin = !modoLogin;
-        document.getElementById('auth-titulo').innerText = modoLogin ? "ENTRAR" : "CADASTRAR";
-        document.getElementById('campo-fone').style.display = modoLogin ? "none" : "block";
+    function toggle() { isLog = !isLog; document.getElementById('t-auth').innerText = isLog ? 'LOGIN' : 'CADASTRO'; document.getElementById('f-area').style.display = isLog ? 'none' : 'block'; }
+    
+    async function auth() {
+        const user = document.getElementById('u').value;
+        const pass = document.getElementById('p').value;
+        const rota = isLog ? '/auth/login' : '/auth/cadastro';
+        const res = await fetch(rota, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user, pass, fone: document.getElementById('f').value })});
+        const data = await res.json();
+        if(data.success) { state.u = user; state.p = pass; state.s = data.saldo; startG(); } else alert(data.message);
     }
 
-    async function autenticar() {
-        const user = document.getElementById('auth-user').value;
-        const pass = document.getElementById('auth-pass').value;
-        const fone = document.getElementById('auth-fone').value;
-        const rota = modoLogin ? '/auth/login' : '/auth/cadastro';
-
-        try {
-            const res = await fetch(rota, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user, pass, fone })
-            });
-            const data = await res.json();
-            if (data.success) {
-                state.user = user; state.pass = pass; state.saldo = data.saldo;
-                localStorage.setItem('u_slot', user); localStorage.setItem('p_slot', pass);
-                iniciarJogo();
-            } else { alert(data.message); }
-        } catch(e) { alert("Erro de conexão"); }
-    }
-
-    function iniciarJogo() {
+    function startG() {
         document.getElementById('tela-login').style.display = 'none';
         document.getElementById('tela-jogo').style.display = 'flex';
-        document.getElementById('user-display').innerText = "PLAYER: " + state.user.toUpperCase();
-        
-        initGrid();
-        
-        // Ativa o motor de sincronização de saldo (PIX)
-        setInterval(sincronizarBanco, 8000);
-
-        // Ativa o motor de Giro Automático em 2 minutos
-        setTimeout(() => {
-            autoSpinOn = true;
-            document.getElementById('aviso-auto').style.display = 'block';
-            ativarMotorGiro();
-        }, 120000);
-    }
-
-    // --- MOTOR DO JOGO ---
-    function initGrid() {
-        const grid = document.getElementById('slot-grid'); grid.innerHTML = '';
-        for (let i = 0; i < 64; i++) {
-            const cell = document.createElement('div'); cell.className = 'cell'; cell.id = `cell-${i}`;
-            const bPos = BORDER_MAP.indexOf(i);
-            if (bPos !== -1) { cell.style.background = CORES[bPos % 10]; cell.innerHTML = "R$5"; }
-            else { cell.style.opacity = "0"; }
-            grid.appendChild(cell);
+        const g = document.getElementById('grid'); g.innerHTML = '';
+        for(let i=0; i<64; i++) {
+            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
+            const p = MAP.indexOf(i);
+            if(p !== -1) { c.style.background = CORES[p%10]; c.innerText = 'R$5'; } else c.style.opacity = '0';
+            g.appendChild(c);
         }
-        const betArea = document.getElementById('bet-container'); betArea.innerHTML = '';
-        CORES.forEach((cor, idx) => {
-            const btn = document.createElement('div'); btn.className = 'bet-btn'; btn.style.borderBottom = `3px solid ${cor}`;
-            btn.innerHTML = `<div style="width:10px; height:10px; background:${cor}; margin:0 auto 5px; border-radius:50%;"></div><span id="bc-${idx}">0</span>`;
-            btn.onclick = () => { if(!state.isSpinning && state.saldo >= 0.5) { state.bets[idx]++; state.saldo -= 0.5; updateUI(); } };
-            betArea.appendChild(btn);
+        const ba = document.getElementById('bet-area'); ba.innerHTML = '';
+        CORES.forEach((c, i) => {
+            const btn = document.createElement('div'); btn.className = 'bet-btn'; btn.style.borderBottom = `3px solid ${c}`;
+            btn.innerHTML = `<span id="v-${i}">0</span>`;
+            btn.onclick = () => { if(!state.spinning && state.s >= 0.5) { state.b[i]++; state.s -= 0.5; update(); } };
+            ba.appendChild(btn);
         });
-        updateUI();
+        update();
+        setInterval(sync, 8000);
+        setTimeout(() => { auto = true; document.getElementById('aviso-auto').style.display = 'block'; setInterval(() => { if(!state.spinning && auto) spin(); }, 10000); }, 120000);
     }
 
-    function startSpin() {
-        if (state.isSpinning) return;
-        if (state.bets.reduce((a, b) => a + b, 0) === 0) {
-            if (autoSpinOn && state.saldo >= 0.5) { state.bets[0]++; state.saldo -= 0.5; } // Aposta auto no branco
-            else return;
-        }
-        state.isSpinning = true;
-
-        // --- MOTOR DE RETENÇÃO (90% CASA / 10% SORTE) ---
-        let corAlvo = 0;
-        let sorte = Math.floor(Math.random() * 100);
-
-        if (sorte < 10) { // 10% de chance de ganhar
-            let coresComAposta = [];
-            state.bets.forEach((v, i) => { if(v > 0) coresComAposta.push(i); });
-            corAlvo = coresComAposta.length > 0 ? coresComAposta[Math.floor(Math.random() * coresComAposta.length)] : Math.floor(Math.random() * 10);
-        } else { // 90% Casa Ganha (menor aposta)
-            let menorValor = Infinity;
-            let coresVazias = [];
-            for (let i = 0; i < 10; i++) {
-                if (state.bets[i] === 0) coresVazias.push(i);
-                if (state.bets[i] < menorValor) { menorValor = state.bets[i]; corAlvo = i; }
-            }
-            if (coresVazias.length > 0) corAlvo = coresVazias[Math.floor(Math.random() * coresVazias.length)];
-        }
-
-        let bMapIdx = -1;
-        BORDER_MAP.forEach((val, idx) => { if(idx % 10 === corAlvo) bMapIdx = idx; });
-        let steps = (BORDER_MAP.length * 3) + bMapIdx;
-        let current = 0; let speed = 30;
-
-        const loop = async () => {
-            document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "none";
-            state.currentIndex = (state.currentIndex + 1) % BORDER_MAP.length;
-            document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "0 0 15px #fff";
-            current++;
-            if (current < steps) { 
-                if (current > steps - 20) speed += 15; 
-                setTimeout(loop, speed); 
-            } else {
-                state.isSpinning = false;
-                let premio = state.bets[corAlvo] * 5.0;
-                if(premio > 0) { state.saldo += premio; alert("GANHOU R$ " + premio.toFixed(2)); }
-                state.bets.fill(0);
-                await salvarSaldo();
-                updateUI();
-            }
+    async function spin() {
+        if(state.spinning) return;
+        if(state.b.reduce((a,b)=>a+b,0) === 0) { if(auto && state.s >= 0.5) { state.b[0]=1; state.s-=0.5; update(); } else return; }
+        state.spinning = true;
+        const res = await fetch('/api/spin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: state.u, bets: state.b })});
+        const data = await res.json();
+        let steps = (MAP.length * 3) + MAP.indexOf(MAP.find((v,i) => i%10 === data.corAlvo));
+        let cur = 0;
+        const loop = () => {
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
+            state.idx = (state.idx + 1) % MAP.length;
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 15px white';
+            cur++;
+            if(cur < steps) setTimeout(loop, 30 + (cur > steps-20 ? (cur-(steps-20))*10 : 0));
+            else { state.spinning = false; state.s = data.novoSaldo; state.b.fill(0); update(); if(data.ganhou) alert("GANHOU!"); }
         };
         loop();
     }
 
-    function ativarMotorGiro() {
-        setInterval(() => {
-            if (!state.isSpinning && autoSpinOn) startSpin();
-        }, 12000)
-    }
-
-    // --- FINANCEIRO ---
-    async function sincronizarBanco() {
-        const res = await fetch('/auth/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ user: state.user, pass: state.pass })
-        });
-        const d = await res.json();
-        if(d.success) { state.saldo = d.saldo; updateUI(); }
-    }
-
-    async function salvarSaldo() {
-        await fetch('/api/save-saldo', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ user: state.user, saldo: state.saldo })
-        });
-    }
-
-    async function gerarPix() {
-        const valor = document.getElementById('val-dep').value;
-        const res = await fetch('/gerar-pix', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userLogado: state.user, valor })
-        });
-        const data = await res.json();
-        document.getElementById('qr-img').src = "data:image/jpeg;base64," + data.imagem_qr;
-        state.pixCopia = data.copia_e_cola;
-        document.getElementById('pix-resultado').style.display = 'block';
-    }
-
-    async function solicitarSaque() {
-        const chave = document.getElementById('chave-pix').value;
-        const valor = parseFloat(document.getElementById('valor-saque').value);
-        if(valor < 10 || valor > state.saldo) return alert("Valor inválido");
-        await fetch('/api/solicitar-saque', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ user: state.user, chave, valor })
-        });
-        state.saldo -= valor; await salvarSaldo(); fecharModais(); alert("Solicitado!");
-    }
-
-    function updateUI() {
-        document.getElementById('saldo-display').innerText = state.saldo.toFixed(2);
-        state.bets.forEach((v, i) => { document.getElementById(`bc-${i}`).innerText = v; });
-    }
-
-    function copiarPix() { navigator.clipboard.writeText(state.pixCopia); alert("Código Copiado!"); }
-    function abrirModal(id) { document.getElementById(id).style.display = 'block'; }
-    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-    function logout() { localStorage.clear(); window.location.reload(); }
-
-    // Auto-Login
-    if(localStorage.getItem('u_slot')) {
-        state.user = localStorage.getItem('u_slot'); state.pass = localStorage.getItem('p_slot');
-        autenticar();
-    }
+    async function sync() { const res = await fetch('/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: state.u, pass: state.p })}); const d = await res.json(); if(d.success) { state.s = d.saldo; update(); } }
+    function update() { document.getElementById('s-display').innerText = state.s.toFixed(2); state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v; }); }
+    async function gerarP() { const res = await fetch('/gerar-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userLogado: state.u, valor: document.getElementById('v-pix').value })}); const d = await res.json(); document.getElementById('q-img').src = "data:image/jpeg;base64,"+d.imagem_qr; state.pix = d.copia_e_cola; document.getElementById('res-pix').style.display = 'block'; }
+    function copyP() { navigator.clipboard.writeText(state.pix); alert("Copiado!"); }
+    function showM() { document.getElementById('m-pix').style.display = 'block'; }
+    function closeM() { document.getElementById('m-pix').style.display = 'none'; }
 </script>
 </body>
 </html>
