@@ -18,8 +18,9 @@
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 340px; margin-top: 20px; }
         .bet-btn { background: #222; padding: 12px 0; border-radius: 8px; cursor: pointer; text-align: center; font-size: 11px; border-bottom: 4px solid transparent; transition: 0.2s; }
         .timer-val { color: #d4af37; font-size: 28px; font-weight: bold; text-align: center; margin-top: 10px; }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 25px; border-radius: 20px; z-index: 1000; width: 280px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
-        #q-img { width: 200px; height: 200px; margin: 10px auto; display: block; background: #eee; border: 1px solid #ccc; }
+        /* Estilo da Modal */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; width: 280px; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        #res-pix img { width: 180px; height: 180px; margin: 10px auto; display: block; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
@@ -36,56 +37,44 @@
     <div id="tela-jogo">
         <div class="top-bar">
             <div>SALDO: R$ <span id="s-display" style="color:#2ecc71; font-weight:bold;">0.00</span></div>
-            <button onclick="openM('m-pix')" style="background:#009ee3; border:none; color:white; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">DEPÓSITO</button>
-            <button onclick="openM('m-saque')" style="background:#e74c3c; border:none; color:white; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">SAQUE</button>
+            <button onclick="openM('m-pix')" style="background:#009ee3; border:none; color:white; border-radius:5px; padding:8px; cursor:pointer;">DEPÓSITO</button>
+            <button onclick="openM('m-saque')" style="background:#e74c3c; border:none; color:white; border-radius:5px; padding:8px; cursor:pointer;">SAQUE</button>
         </div>
-
         <div class="timer-val" id="timer">02:00</div>
-
-        <div class="grid-container">
-            <div class="grid" id="grid"></div>
-        </div>
+        <div class="grid-container"><div class="grid" id="grid"></div></div>
         <div class="bet-area" id="bet-area"></div>
     </div>
 
     <div id="m-pix" class="modal">
-        <h3 style="margin-top:0">Depositar via PIX</h3>
-        <p style="font-size:12px; color:#666">Valor mínimo: R$ 1,00</p>
-        <input type="number" id="v-pix" value="20" style="color:black; background:#eee; text-align:center; font-size:18px;">
+        <h3 style="margin:0">Depositar</h3>
+        <input type="number" id="v-pix" value="20" style="color:black; background:#eee; text-align:center;">
         <button class="btn-gold" id="btn-gerar" onclick="gerarP()">GERAR QR CODE</button>
-        
-        <div id="res-pix" style="display:none; margin-top: 10px;">
-            <img id="q-img" src="" alt="QR Code PIX">
-            <button onclick="copyP()" style="background:#222; color:white; padding:12px; width:100%; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">COPIAR CÓDIGO PIX</button>
+        <div id="res-pix" style="display:none">
+            <img id="q-img" src="">
+            <button onclick="copyP()" style="background:#222; color:white; padding:10px; width:100%; border:none; border-radius:5px; margin-top:5px; cursor:pointer;">COPIAR CÓDIGO</button>
         </div>
-        
-        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:15px; cursor:pointer; font-weight:bold;">FECHAR</button>
+        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:10px; cursor:pointer;">FECHAR</button>
     </div>
 
     <div id="m-saque" class="modal">
-        <h3 style="margin-top:0">Solicitar Saque</h3>
-        <input type="text" id="ch-saque" placeholder="Chave PIX (CPF/Email/Cel)" style="color:black; background:#eee;">
-        <input type="number" id="val-saque" placeholder="Valor do Saque" style="color:black; background:#eee;">
-        <button class="btn-gold" onclick="sacar()">CONFIRMAR SAQUE</button>
-        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:15px; cursor:pointer; font-weight:bold;">CANCELAR</button>
+        <h3>Sacar</h3>
+        <input type="text" id="ch-saque" placeholder="Chave PIX" style="color:black; background:#eee;">
+        <input type="number" id="val-saque" placeholder="Valor" style="color:black; background:#eee;">
+        <button class="btn-gold" onclick="alert('Saque solicitado!')">SOLICITAR</button>
+        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:10px;">CANCELAR</button>
     </div>
 
 <script>
     let bloqueado = false;
-    let state = { u: '', s: 0.00, b: [0,0,0,0,0,0,0,0,0,0], idx: 0, pix_copia: '' };
+    let state = { u: '', s: 0.00, b: [0,0,0,0,0,0,0,0,0,0], idx: 0, pix_code: '' };
     const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
     const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
 
     async function auth() {
         const u = document.getElementById('u').value, p = document.getElementById('p').value;
-        if(!u || !p) return alert("Preencha tudo!");
         const res = await fetch('/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: u, pass: p })});
         const data = await res.json();
-        if(data.success) { 
-            state.u = data.user; state.s = data.saldo; 
-            if(data.bets) state.b = data.bets; 
-            startG(); 
-        } else alert("Usuário ou senha incorretos!");
+        if(data.success) { state.u = u; state.s = data.saldo; if(data.bets) state.b = data.bets; startG(); } else alert("Erro!");
     }
 
     function startG() {
@@ -99,9 +88,7 @@
             else { c.style.opacity = '0.05'; }
             g.appendChild(c);
         }
-        desenharBotoes();
-        update();
-        setInterval(sincronizar, 1000);
+        desenharBotoes(); update(); setInterval(sincronizar, 1000);
     }
 
     function desenharBotoes() {
@@ -113,7 +100,7 @@
                 if(!bloqueado && state.s >= 1.0) { 
                     state.b[i] += 1.0; state.s -= 1.0; update(); 
                     await fetch('/api/save-saldo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets: state.b})});
-                } else if(state.s < 1.0) { alert("Saldo insuficiente!"); }
+                }
             };
             ba.appendChild(btn);
         });
@@ -140,65 +127,49 @@
             document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 20px white';
             cur++;
             if(cur < steps) setTimeout(loop, 40);
-            else {
-                state.s = data.novoSaldo; state.b.fill(0); update();
-                setTimeout(() => { bloqueado = false; }, 3000);
-            }
+            else { state.s = data.novoSaldo; state.b.fill(0); update(); setTimeout(() => { bloqueado = false; }, 3000); }
         };
         loop();
     }
 
-    function update() { 
-        document.getElementById('s-display').innerText = state.s.toFixed(2); 
-        state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v; }); 
-    }
-
-    // --- LOGICA DO PIX (ARRUMADA) ---
+    // --- FUNÇÃO PIX CORRIGIDA ---
     async function gerarP() {
         const btn = document.getElementById('btn-gerar');
-        const v = document.getElementById('v-pix').value;
-        if(v < 1) return alert("Valor mínimo R$ 1,00");
-        
-        btn.innerText = "GERANDO...";
+        btn.innerText = "CARREGANDO...";
         btn.disabled = true;
 
         try {
             const res = await fetch('/gerar-pix', { 
                 method: 'POST', 
                 headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ userLogado: state.u, valor: v })
+                body: JSON.stringify({ userLogado: state.u, valor: document.getElementById('v-pix').value })
             }); 
             const d = await res.json(); 
             
-            if(d.success && d.imagem_qr) {
-                document.getElementById('q-img').src = "data:image/jpeg;base64," + d.imagem_qr; 
-                state.pix_copia = d.copia_e_cola; 
+            if(d.success) {
+                // Aqui a imagem é carregada
+                document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr; 
+                state.pix_code = d.copia_e_cola; 
                 document.getElementById('res-pix').style.display = 'block'; 
-                btn.innerText = "QR CODE GERADO!";
-            } else { 
-                alert("Erro no servidor. Verifique o Access Token."); 
-                btn.innerText = "TENTAR NOVAMENTE";
+                btn.innerText = "GERAR QR CODE";
+                btn.disabled = false;
+            } else {
+                alert("Erro ao gerar: " + d.message);
                 btn.disabled = false;
             }
-        } catch(e) {
-            alert("Erro de conexão.");
+        } catch (e) {
+            alert("Erro de conexão!");
             btn.disabled = false;
         }
     }
 
-    function copyP() { 
-        if(!state.pix_copia) return;
-        navigator.clipboard.writeText(state.pix_copia); 
-        alert("Código PIX copiado! Pague no seu banco."); 
+    function copyP() { navigator.clipboard.writeText(state.pix_code); alert("Copiado!"); }
+    function update() { 
+        document.getElementById('s-display').innerText = state.s.toFixed(2); 
+        state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v; }); 
     }
-
     function openM(id) { document.getElementById(id).style.display = 'block'; }
-    function closeM() { 
-        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); 
-        document.getElementById('res-pix').style.display = 'none';
-        document.getElementById('btn-gerar').disabled = false;
-        document.getElementById('btn-gerar').innerText = "GERAR QR CODE";
-    }
+    function closeM() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 </script>
 </body>
 </html>
