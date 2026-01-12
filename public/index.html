@@ -2,174 +2,127 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal - Oficial</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlotReal</title>
     <style>
-        body { background: #050505; color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        #tela-login, #tela-jogo { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        #tela-jogo { display: none; }
-        .card-login { background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; text-align: center; margin-top: 80px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; background: #222; color: white; }
-        .btn-gold { background: #d4af37; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; color: black; }
-        .top-bar { width: 100%; background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; align-items: center; position: sticky; top: 0; z-index: 10; }
-        .grid-container { background: #111; padding: 15px; border-radius: 15px; border: 1px solid #333; margin-top: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-        .cell { width: 40px; height: 40px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; color: white; text-shadow: 1px 1px 2px black; border: 1px solid rgba(255,255,255,0.1); }
-        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 340px; margin-top: 20px; }
-        .bet-btn { background: #222; padding: 12px 0; border-radius: 8px; cursor: pointer; text-align: center; font-size: 11px; border-bottom: 4px solid transparent; transition: 0.2s; }
-        .timer-val { color: #d4af37; font-size: 28px; font-weight: bold; text-align: center; margin-top: 10px; }
-        /* Estilo da Modal */
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 20px; border-radius: 15px; z-index: 1000; width: 280px; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        #res-pix img { width: 180px; height: 180px; margin: 10px auto; display: block; border: 1px solid #ccc; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; }
+        .top { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; }
+        .grid { display: grid; grid-template-columns: repeat(8, 5fr); gap: 5px; width: 320px; margin: 20px auto; }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .bets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 320px; margin: auto; }
+        .btn-b { background: #222; border: 1px solid #444; color: #fff; padding: 10px 0; border-radius: 5px; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 20px; border-radius: 10px; width: 260px; z-index: 100; }
+        input { width: 90%; padding: 10px; margin: 10px 0; }
     </style>
 </head>
 <body>
 
-    <div id="tela-login">
-        <div class="card-login">
-            <h2 style="color:#d4af37">LOGIN</h2>
-            <input type="text" id="u" placeholder="Usuário">
-            <input type="password" id="p" placeholder="Senha">
-            <button class="btn-gold" onclick="auth()">ENTRAR</button>
-        </div>
+    <div id="login-area" style="margin-top: 50px;">
+        <input id="user" placeholder="Usuário"><br>
+        <input id="pass" type="password" placeholder="Senha"><br>
+        <button onclick="logar()" style="padding: 10px 50px; background: #d4af37; border: none; font-weight: bold;">ENTRAR</button>
     </div>
 
-    <div id="tela-jogo">
-        <div class="top-bar">
-            <div>SALDO: R$ <span id="s-display" style="color:#2ecc71; font-weight:bold;">0.00</span></div>
-            <button onclick="openM('m-pix')" style="background:#009ee3; border:none; color:white; border-radius:5px; padding:8px; cursor:pointer;">DEPÓSITO</button>
-            <button onclick="openM('m-saque')" style="background:#e74c3c; border:none; color:white; border-radius:5px; padding:8px; cursor:pointer;">SAQUE</button>
+    <div id="game-area" style="display:none;">
+        <div class="top">
+            <span>Saldo: R$ <b id="saldo">0.00</b></span>
+            <button onclick="document.getElementById('m-pix').style.display='block'" style="background: #009ee3; color: #fff; border: none; border-radius: 4px;">DEPOSITAR</button>
         </div>
-        <div class="timer-val" id="timer">02:00</div>
-        <div class="grid-container"><div class="grid" id="grid"></div></div>
-        <div class="bet-area" id="bet-area"></div>
+        <h2 id="timer">02:00</h2>
+        <div class="grid" id="grid"></div>
+        <div class="bets" id="bet-btns"></div>
     </div>
 
     <div id="m-pix" class="modal">
-        <h3 style="margin:0">Depositar</h3>
-        <input type="number" id="v-pix" value="20" style="color:black; background:#eee; text-align:center;">
-        <button class="btn-gold" id="btn-gerar" onclick="gerarP()">GERAR QR CODE</button>
-        <div id="res-pix" style="display:none">
-            <img id="q-img" src="">
-            <button onclick="copyP()" style="background:#222; color:white; padding:10px; width:100%; border:none; border-radius:5px; margin-top:5px; cursor:pointer;">COPIAR CÓDIGO</button>
+        <h3>PIX Rápido</h3>
+        <input type="number" id="v-pix" value="20">
+        <button onclick="gerar()" style="width:100%; padding:10px; background:#d4af37; border:none; font-weight:bold;">GERAR QR CODE</button>
+        <div id="res" style="display:none">
+            <img id="img" style="width:150px; margin:10px 0;">
+            <button onclick="copy()" style="width:100%; padding:10px; background:#000; color:#fff;">COPIAR CÓDIGO</button>
         </div>
-        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:10px; cursor:pointer;">FECHAR</button>
-    </div>
-
-    <div id="m-saque" class="modal">
-        <h3>Sacar</h3>
-        <input type="text" id="ch-saque" placeholder="Chave PIX" style="color:black; background:#eee;">
-        <input type="number" id="val-saque" placeholder="Valor" style="color:black; background:#eee;">
-        <button class="btn-gold" onclick="alert('Saque solicitado!')">SOLICITAR</button>
-        <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:10px;">CANCELAR</button>
+        <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; color:red; border:none; background:none;">FECHAR</button>
     </div>
 
 <script>
-    let bloqueado = false;
-    let state = { u: '', s: 0.00, b: [0,0,0,0,0,0,0,0,0,0], idx: 0, pix_code: '' };
-    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
-    const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
+    let st = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0], pix: '', idx: 0, lock: false };
+    const CS = ['#FFF','#444','#FF0','#0F0','#F0F','#F00','#00F','#888','#808','#840'];
+    const MP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
 
-    async function auth() {
-        const u = document.getElementById('u').value, p = document.getElementById('p').value;
-        const res = await fetch('/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: u, pass: p })});
-        const data = await res.json();
-        if(data.success) { state.u = u; state.s = data.saldo; if(data.bets) state.b = data.bets; startG(); } else alert("Erro!");
+    async function logar() {
+        const r = await fetch('/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: document.getElementById('user').value, pass: document.getElementById('pass').value })});
+        const d = await r.json();
+        if(d.success) { st.u = d.user; st.s = d.saldo; st.b = d.bets; init(); } else alert("Erro");
     }
 
-    function startG() {
-        document.getElementById('tela-login').style.display = 'none';
-        document.getElementById('tela-jogo').style.display = 'flex';
-        const g = document.getElementById('grid'); g.innerHTML = '';
+    function init() {
+        document.getElementById('login-area').style.display = 'none';
+        document.getElementById('game-area').style.display = 'block';
+        const g = document.getElementById('grid');
         for(let i=0; i<64; i++) {
-            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
-            const pos = MAP.indexOf(i);
-            if(pos !== -1) { c.style.background = CORES[pos % 10]; c.innerText = 'R$ 5'; }
-            else { c.style.opacity = '0.05'; }
+            let c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
+            let p = MP.indexOf(i);
+            if(p !== -1) { c.style.background = CS[p % 10]; c.innerText = 'R$ 5'; } else { c.style.opacity = '0.1'; }
             g.appendChild(c);
         }
-        desenharBotoes(); update(); setInterval(sincronizar, 1000);
+        btns(); up(); setInterval(sync, 1000);
     }
 
-    function desenharBotoes() {
-        const ba = document.getElementById('bet-area'); ba.innerHTML = '';
-        CORES.forEach((c, i) => {
-            const btn = document.createElement('div'); btn.className = 'bet-btn'; btn.style.borderBottom = `4px solid ${c}`;
-            btn.innerHTML = `<span style="color:#888; font-size:9px;">COR ${i}</span><br><b id="v-${i}">${state.b[i]}</b>`;
-            btn.onclick = async () => { 
-                if(!bloqueado && state.s >= 1.0) { 
-                    state.b[i] += 1.0; state.s -= 1.0; update(); 
-                    await fetch('/api/save-saldo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets: state.b})});
+    function btns() {
+        const ba = document.getElementById('bet-btns'); ba.innerHTML = '';
+        CS.forEach((c, i) => {
+            let b = document.createElement('div'); b.className = 'btn-b'; b.style.borderBottom = `3px solid ${c}`;
+            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${st.b[i]}</b>`;
+            b.onclick = async () => { 
+                if(!st.lock && st.s >= 1) { 
+                    st.b[i]++; st.s--; up(); 
+                    await fetch('/api/save-saldo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:st.u, saldo:st.s, bets:st.b})});
                 }
             };
-            ba.appendChild(btn);
+            ba.appendChild(b);
         });
     }
 
-    async function sincronizar() {
-        if(bloqueado) return;
-        const res = await fetch('/api/tempo-real');
-        const data = await res.json();
-        document.getElementById('timer').innerText = `${Math.floor(data.segundos/60).toString().padStart(2,'0')}:${(data.segundos%60).toString().padStart(2,'0')}`;
-        if(data.segundos === 0) rodar();
+    async function sync() {
+        if(st.lock) return;
+        const r = await fetch('/api/tempo-real'); const d = await r.json();
+        document.getElementById('timer').innerText = `${Math.floor(d.segundos/60).toString().padStart(2,'0')}:${(d.segundos%60).toString().padStart(2,'0')}`;
+        if(d.segundos === 0) spin();
     }
 
-    async function rodar() {
-        bloqueado = true;
-        const res = await fetch('/api/spin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: state.u })});
-        const data = await res.json();
-        let targetIdx = -1;
-        for(let i=0; i < MAP.length; i++) { if(i % 10 === data.corAlvo) { targetIdx = i; break; } }
-        let steps = (MAP.length * 2) + targetIdx, cur = 0;
+    async function spin() {
+        st.lock = true;
+        const r = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:st.u})});
+        const d = await r.json();
+        let target = -1; for(let i=0; i<MP.length; i++) { if(i%10 === d.corAlvo) { target = i; break; } }
+        let total = (MP.length * 2) + target, count = 0;
         const loop = () => {
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
-            state.idx = (state.idx + 1) % MAP.length;
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 20px white';
-            cur++;
-            if(cur < steps) setTimeout(loop, 40);
-            else { state.s = data.novoSaldo; state.b.fill(0); update(); setTimeout(() => { bloqueado = false; }, 3000); }
+            document.getElementById(`c-${MP[st.idx]}`).style.boxShadow = 'none';
+            st.idx = (st.idx + 1) % MP.length;
+            document.getElementById(`c-${MP[st.idx]}`).style.boxShadow = '0 0 15px #fff';
+            count++;
+            if(count < total) setTimeout(loop, 40);
+            else { st.s = d.novoSaldo; st.b.fill(0); up(); st.lock = false; }
         };
         loop();
     }
 
-    // --- FUNÇÃO PIX CORRIGIDA ---
-    async function gerarP() {
-        const btn = document.getElementById('btn-gerar');
-        btn.innerText = "CARREGANDO...";
-        btn.disabled = true;
-
-        try {
-            const res = await fetch('/gerar-pix', { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ userLogado: state.u, valor: document.getElementById('v-pix').value })
-            }); 
-            const d = await res.json(); 
-            
-            if(d.success) {
-                // Aqui a imagem é carregada
-                document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr; 
-                state.pix_code = d.copia_e_cola; 
-                document.getElementById('res-pix').style.display = 'block'; 
-                btn.innerText = "GERAR QR CODE";
-                btn.disabled = false;
-            } else {
-                alert("Erro ao gerar: " + d.message);
-                btn.disabled = false;
-            }
-        } catch (e) {
-            alert("Erro de conexão!");
-            btn.disabled = false;
+    async function gerar() {
+        const v = document.getElementById('v-pix').value;
+        const r = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:st.u, valor:v})});
+        const d = await r.json();
+        if(d.success) {
+            document.getElementById('img').src = "data:image/png;base64," + d.imagem_qr;
+            st.pix = d.copia_e_cola;
+            document.getElementById('res').style.display = 'block';
         }
     }
 
-    function copyP() { navigator.clipboard.writeText(state.pix_code); alert("Copiado!"); }
-    function update() { 
-        document.getElementById('s-display').innerText = state.s.toFixed(2); 
-        state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v; }); 
+    function up() { 
+        document.getElementById('saldo').innerText = st.s.toFixed(2);
+        st.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
-    function openM(id) { document.getElementById(id).style.display = 'block'; }
-    function closeM() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+    function copy() { navigator.clipboard.writeText(st.pix); alert("Copiado!"); }
 </script>
 </body>
 </html>
