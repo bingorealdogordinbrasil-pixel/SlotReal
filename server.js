@@ -1,18 +1,15 @@
-lconst express = require('express');
+const express = require('express');
 const path = require('path');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 
 const app = express();
 app.use(express.json());
-
-// Resolve o problema da pasta public e do erro de arquivo não encontrado
 app.use(express.static(path.join(__dirname, 'public')));
 
-// CONFIGURAÇÃO MERCADO PAGO - COLOQUE SEU TOKEN ABAIXO
+// Use o token do seu print 1000074503.jpg
 const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
 const payment = new Payment(client);
 
-// ROTA PARA GERAR PIX
 app.post('/gerar-pix', async (req, res) => {
     try {
         const body = {
@@ -29,10 +26,9 @@ app.post('/gerar-pix', async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ erro: "Erro no servidor" });
+        res.status(500).json({ erro: "Erro ao gerar PIX" });
     }
 });
 
-// Inicia o servidor na porta correta para o Render
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Servidor ON na porta ${PORT}`));
+app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
