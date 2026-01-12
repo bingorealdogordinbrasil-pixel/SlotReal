@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 2. LIGA O DINHEIRO REAL (Cole aqui o Access Token do seu print 1000074503.jpg)
-const client = new MercadoPagoConfig({ accessToken: 'COLE_AQUI_SEU_ACCESS_TOKEN' });
+const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
 const payment = new Payment(client);
 
 // 3. ROTA PARA GERAR O PIX DE R$ 5,00
