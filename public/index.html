@@ -35,8 +35,8 @@
         /* MODAIS */
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; width: 85%; max-width: 320px; padding: 25px; border-radius: 25px; z-index: 2000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.9); }
         .modal input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
-        .copy-box { background: #f4f4f4; border: 1px solid #ddd; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; margin: 15px 0; }
-        .btn-copy { background: #009ee3; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .copy-box { background: #f4f4f4; border: 1px solid #ddd; padding: 12px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 15px 0; }
+        .btn-copy { background: #009ee3; color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
 
         #msg-overlay { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.96); width: 85%; padding: 25px 5px; border-radius: 25px; border: 2px solid #d4af37; z-index: 1000; }
     </style>
@@ -45,11 +45,11 @@
 
 <div class="top-bar">
     <div class="saldo-header">
-        <div style="font-size: 10px; color: #aaa;">SALDO</div>
+        <div style="font-size: 10px; color: #aaa;" id="user-display">CARREGANDO...</div>
         <span>R$ <span id="saldo-display">0.00</span></span>
     </div>
     <div style="display: flex; gap: 5px;">
-        <button class="btn-deposito-top" onclick="gerarPagamento()">+ DEPÓSITO</button>
+        <button class="btn-deposito-top" onclick="abrirModalDeposito()">+ DEPÓSITO</button>
         <button class="btn-saque-top" onclick="abrirSaque()">SAQUE</button>
     </div>
 </div>
@@ -57,14 +57,19 @@
 <div class="casino-container">
     <div id="msg-overlay"><h2 id="msg-text"></h2></div>
 
-    <div id="pix-modal" class="modal">
-        <h3 style="margin:0;">Depósito via PIX</h3>
-        <img id="qr-img" src="" style="width:180px; height:180px; margin:15px 0;">
-        <div class="copy-box">
-            <input type="text" id="qr-copy" readonly value="Carregando...">
-            <button class="btn-copy" id="btnCopy" onclick="copyPix()">Copiar</button>
+    <div id="deposito-modal" class="modal">
+        <h3 style="margin:0;">Depositar via PIX</h3>
+        <p style="font-size: 12px; color: #666;">Mínimo R$ 10,00</p>
+        <input type="number" id="valor-deposito" placeholder="Valor R$" value="10">
+        <button onclick="gerarPagamento()" style="background:#009ee3; color:white; border:none; padding:15px; border-radius:10px; width:100%; font-weight:bold;">GERAR PIX</button>
+        <div id="area-pix" style="display:none;">
+            <img id="qr-img" src="" style="width:150px; margin:15px 0;">
+            <div class="copy-box">
+                <input type="text" id="qr-copy" readonly style="font-size: 10px;">
+                <button class="btn-copy" id="btnCopy" onclick="copyPix()">COPIAR CÓDIGO</button>
+            </div>
         </div>
-        <button onclick="fecharModais()" style="background:#eee; color:#666; border:none; padding:10px; border-radius:10px; width:100%;">Fechar</button>
+        <button onclick="fecharModais()" style="margin-top:10px; border:none; background:none; color:#999;">Fechar</button>
     </div>
 
     <div id="saque-modal" class="modal">
@@ -84,13 +89,29 @@
 </div>
 
 <script>
-    const SEU_WHATSAPP = "55119XXXXXXXX"; // COLOQUE SEU NUMERO AQUI (DDD + NUMERO)
+    const SEU_WHATSAPP = "55119XXXXXXXX"; 
     const CORES = ['#FFFFFF', '#222222', '#FFFF00', '#00FF00', '#FF69B4', '#FF0000', '#0000FF', '#808080', '#800080', '#8B4513'];
     const BORDER_MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
     
-    let state = { saldo: 0.00, bets: new Array(10).fill(0), isSpinning: false, currentIndex: 0 };
+    let state = { 
+        user: localStorage.getItem('usuarioLogado') || "Convidado",
+        saldo: 0.00, 
+        bets: new Array(10).fill(0), 
+        isSpinning: false, 
+        currentIndex: 0 
+    };
 
-    function init() {
+    async function init() {
+        if(!localStorage.getItem('usuarioLogado')) {
+            window.location.href = "login.html"; // Redireciona se não tiver logado
+            return;
+        }
+        
+        document.getElementById('user-display').innerText = "OLÁ, " + state.user.toUpperCase();
+        
+        // Carregar saldo real do banco de dados
+        await atualizarSaldoLocal();
+
         const grid = document.getElementById('slot-grid');
         grid.innerHTML = '';
         for (let i = 0; i < 64; i++) {
@@ -100,8 +121,6 @@
             if (bPos !== -1) {
                 let corIdx = bPos % 10;
                 cell.style.background = CORES[corIdx];
-                cell.setAttribute('data-cor-idx', corIdx);
-                cell.style.color = (corIdx === 0 || corIdx === 2 || corIdx === 3 || corIdx === 4) ? "#000" : "#fff";
                 cell.innerHTML = "R$5";
             } else { cell.style.opacity = "0"; }
             grid.appendChild(cell);
@@ -118,45 +137,76 @@
         });
     }
 
-    // LOGICA DEPÓSITO
+    async function atualizarSaldoLocal() {
+        // Pega o saldo mais atualizado do banco
+        const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user: state.user, pass: localStorage.getItem('senhaLogada') })
+        });
+        const data = await res.json();
+        if(data.success) {
+            state.saldo = data.saldo;
+            updateUI();
+        }
+    }
+
+    function abrirModalDeposito() { document.getElementById('deposito-modal').style.display = 'block'; }
+
     async function gerarPagamento() {
+        const valor = document.getElementById('valor-deposito').value;
         try {
-            const res = await fetch('/gerar-pix', { method: 'POST' });
+            const res = await fetch('/gerar-pix', { 
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userLogado: state.user, valor: valor })
+            });
             const data = await res.json();
             document.getElementById('qr-img').src = "data:image/jpeg;base64," + data.imagem_qr;
             document.getElementById('qr-copy').value = data.copia_e_cola;
-            document.getElementById('pix-modal').style.display = 'block';
-        } catch (e) { alert("Erro ao gerar PIX"); }
+            document.getElementById('area-pix').style.display = 'block';
+        } catch (e) { alert("Erro ao conectar com servidor de pagamento"); }
     }
 
-    // LOGICA SAQUE (WHATSAPP)
-    function abrirSaque() { document.getElementById('saque-modal').style.display = 'block'; }
-
-    function solicitarSaque() {
+    async function solicitarSaque() {
         const chave = document.getElementById('chave-pix').value;
         const valor = parseFloat(document.getElementById('valor-saque').value);
 
-        if(!chave || valor < 10) { alert("Mínimo de saque R$ 10,00"); return; }
+        if(!chave || valor < 10) { alert("Mínimo R$ 10,00"); return; }
         if(valor > state.saldo) { alert("Saldo insuficiente"); return; }
 
-        state.saldo -= valor;
-        updateUI();
+        const res = await fetch('/api/solicitar-saque', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user: state.user, chave: chave, valor: valor })
+        });
 
-        const msg = `🎰 *PEDIDO DE SAQUE - SLOT REAL*%0A%0A*Valor:* R$ ${valor.toFixed(2)}%0A*Chave PIX:* ${chave}%0A%0A_Favor realizar o pagamento!_`;
-        window.open(`https://wa.me/${SEU_WHATSAPP}?text=${msg}`);
-        fecharModais();
+        if(res.ok) {
+            state.saldo -= valor;
+            await salvarSaldoNoBanco();
+            alert("Solicitação enviada! Aguarde o pagamento.");
+            fecharModais();
+        }
+    }
+
+    async function salvarSaldoNoBanco() {
+        await fetch('/api/save-saldo', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user: state.user, saldo: state.saldo })
+        });
+        updateUI();
     }
 
     function copyPix() {
         const input = document.getElementById('qr-copy');
         input.select();
         navigator.clipboard.writeText(input.value);
-        document.getElementById('btnCopy').innerText = "OK!";
-        setTimeout(() => { document.getElementById('btnCopy').innerText = "Copiar"; }, 2000);
+        alert("Copiado! Pague no seu banco.");
     }
 
     function fecharModais() { 
-        document.getElementById('pix-modal').style.display = 'none'; 
+        document.getElementById('deposito-modal').style.display = 'none'; 
         document.getElementById('saque-modal').style.display = 'none'; 
     }
 
@@ -175,7 +225,7 @@
         let totalSteps = (BORDER_MAP.length * 3) + targetIdx;
         let currentStep = 0; let speed = 30;
 
-        const loop = () => {
+        const loop = async () => {
             document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "none";
             state.currentIndex = (state.currentIndex + 1) % BORDER_MAP.length;
             document.getElementById(`cell-${BORDER_MAP[state.currentIndex]}`).style.boxShadow = "0 0 20px #fff";
@@ -186,8 +236,12 @@
             } else {
                 state.isSpinning = false;
                 let premio = state.bets[corAlvoIndex] * 5.00;
-                if(premio > 0) { state.saldo += premio; alert("GANHOU R$ " + premio.toFixed(2)); }
-                state.bets.fill(0); updateUI();
+                if(premio > 0) { 
+                    state.saldo += premio; 
+                    alert("GANHOU R$ " + premio.toFixed(2)); 
+                }
+                state.bets.fill(0); 
+                await salvarSaldoNoBanco();
             }
         };
         loop();
@@ -196,6 +250,9 @@
     function clearBets() { if(!state.isSpinning) { state.saldo += state.bets.reduce((a, b) => a + b, 0) * 0.50; state.bets.fill(0); updateUI(); } }
 
     init();
+
+    // Checar saldo a cada 10 segundos para ver se o PIX caiu
+    setInterval(atualizarSaldoLocal, 10000);
 </script>
 </body>
 </html>
