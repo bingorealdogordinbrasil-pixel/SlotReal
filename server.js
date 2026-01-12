@@ -5,14 +5,14 @@ const { MercadoPagoConfig, Payment } = require('mercadopago');
 const app = express();
 app.use(express.json());
 
-// Isso resolve o erro vermelho do Render de vez
+// 1. Resolve o erro de "file not found" apontando para a pasta certa
 app.use(express.static(path.join(__dirname, 'public')));
 
-// CONEXÃO COM DINHEIRO REAL
-const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
+// 2. LIGA O DINHEIRO REAL (Cole aqui o Access Token do seu print 1000074503.jpg)
+const client = new MercadoPagoConfig({ accessToken: 'COLE_AQUI_SEU_ACCESS_TOKEN' });
 const payment = new Payment(client);
 
-// ROTA PARA GERAR O PIX DE R$ 5,00
+// 3. ROTA PARA GERAR O PIX DE R$ 5,00
 app.post('/gerar-pix', async (req, res) => {
     try {
         const body = {
