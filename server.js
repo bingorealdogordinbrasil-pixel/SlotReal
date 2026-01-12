@@ -7,9 +7,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- CONFIGURAÇÕES ---
-const SENHA_GERENTE = "admin123"; 
-const MP_TOKEN = "TEST-5872111440785194-010218-09559312066d92484080808080808080-12345678"; // COLOQUE SEU TOKEN AQUI
+// --- CONFIGURAÇÃO MERCADO PAGO (TOKEN REAL) ---
+const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741";
 const client = new MercadoPagoConfig({ accessToken: MP_TOKEN });
 const payment = new Payment(client);
 
@@ -24,7 +23,7 @@ const User = mongoose.model('User', new mongoose.Schema({
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// --- RELÓGIO ---
+// --- RELÓGIO DO SERVIDOR ---
 let tempoServidor = 120; 
 setInterval(() => {
     if (tempoServidor > 0) tempoServidor--;
@@ -33,15 +32,20 @@ setInterval(() => {
 
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempoServidor }));
 
-// --- PIX REAL (MERCADO PAGO) ---
+// --- GERAÇÃO DE PIX REAL ---
 app.post('/gerar-pix', async (req, res) => {
     try {
         const { valor, userLogado } = req.body;
         const body = {
             transaction_amount: Number(valor),
-            description: `Deposito - ${userLogado}`,
+            description: `Depósito Slot - ${userLogado}`,
             payment_method_id: 'pix',
-            payer: { email: `${userLogado}@slotreal.com` }
+            payer: {
+                email: `${userLogado}@slot.com`,
+                first_name: userLogado
+            },
+            // Metadata serve para o Webhook saber quem é o dono do dinheiro depois
+            metadata: { user_id: userLogado }
         };
 
         const response = await payment.create({ body });
@@ -51,12 +55,39 @@ app.post('/gerar-pix', async (req, res) => {
             copia_e_cola: response.point_of_interaction.transaction_data.qr_code
         });
     } catch (e) {
-        console.log(e);
+        console.error(e);
         res.json({ success: false });
     }
 });
 
-// --- MOTOR DE GIRO E SALVAMENTO ---
+// --- WEBHOOK: CRÉDITO AUTOMÁTICO ---
+app.post('/webhooks', async (req, res) => {
+    const { action, data } = req.body;
+    
+    // Se um pagamento foi aprovado
+    if (action === "payment.created" || req.query["data.id"]) {
+        const paymentId = data?.id || req.query["data.id"];
+        
+        try {
+            const p = await payment.get({ id: paymentId });
+            
+            if (p.status === 'approved') {
+                const valorPago = p.transaction_amount;
+                const usuario = p.metadata.user_id;
+
+                // Adiciona o saldo no banco de dados automaticamente
+                await User.findOneAndUpdate(
+                    { user: usuario },
+                    { $inc: { saldo: valorPago } }
+                );
+                console.log(`💰 SALDO CREDITADO: R$ ${valorPago} para ${usuario}`);
+            }
+        } catch (e) { console.error("Erro no Webhook", e); }
+    }
+    res.sendStatus(200);
+});
+
+// --- ROTAS DO JOGO ---
 app.post('/auth/login', async (req, res) => {
     const conta = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (conta) res.json({ success: true, saldo: conta.saldo, user: conta.user, bets: conta.bets });
@@ -70,8 +101,6 @@ app.post('/api/save-saldo', async (req, res) => {
 
 app.post('/api/spin', async (req, res) => {
     const userDb = await User.findOne({ user: req.body.user });
-    if (!userDb) return res.json({ success: false });
-
     let asApostas = userDb.bets;
     let menor = Math.min(...asApostas);
     let cores = [];
@@ -85,4 +114,4 @@ app.post('/api/spin', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 SERVIDOR OK`));
+app.listen(PORT, () => console.log(`🚀 SERVIDOR RODANDO COM PIX REAL`));
