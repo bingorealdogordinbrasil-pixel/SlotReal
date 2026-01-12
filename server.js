@@ -11,60 +11,46 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
 
-// MODELO DE USUÁRIO
 const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     fone: String,
-    saldo: { type: Number, default: 0.00 } // Começa com ZERO
+    saldo: { type: Number, default: 0.00 }
 }));
 
-// --- LÓGICA DO GIRO (PROTEGIDA NO SERVIDOR) ---
+// LÓGICA DE DECISÃO DO VENCEDOR (CASA GANHA)
 app.post('/api/spin', async (req, res) => {
     try {
         const { user, bets } = req.body;
         const userDb = await User.findOne({ user });
-        if (!userDb || userDb.saldo < 0) return res.status(400).json({ success: false });
-
-        // 1. ACHAR A COR COM MENOR VOLUME DE DINHEIRO
+        
         let corAlvo = 0;
         let menorValor = Infinity;
         let coresVazias = [];
 
         bets.forEach((valor, i) => {
             if (valor === 0) coresVazias.push(i);
-            if (valor < menorValor) {
-                menorValor = valor;
-                corAlvo = i;
-            }
+            if (valor < menorValor) { menorValor = valor; corAlvo = i; }
         });
 
-        // Se houver cores sem nenhuma aposta, cai em uma delas obrigatoriamente
         if (coresVazias.length > 0) {
             corAlvo = coresVazias[Math.floor(Math.random() * coresVazias.length)];
         }
 
-        // 2. CALCULAR RESULTADO
-        const premio = bets[corAlvo] * 5.0; // Paga 5x
+        const premio = bets[corAlvo] * 5.0;
         const novoSaldo = Number((userDb.saldo + premio).toFixed(2));
-
         await User.findOneAndUpdate({ user }, { saldo: novoSaldo });
 
-        res.json({ 
-            success: true, 
-            corAlvo, 
-            novoSaldo,
-            ganhou: premio > 0 
-        });
+        res.json({ success: true, corAlvo, novoSaldo, ganhou: premio > 0 });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// --- SISTEMA DE LOGIN E CADASTRO ---
+// LOGIN E CADASTRO
 app.post('/auth/login', async (req, res) => {
     const { user, pass } = req.body;
     const conta = await User.findOne({ user, pass });
     if (conta) res.json({ success: true, saldo: conta.saldo });
-    else res.json({ success: false, message: "Usuário ou senha incorretos" });
+    else res.json({ success: false, message: "Dados incorretos" });
 });
 
 app.post('/auth/cadastro', async (req, res) => {
@@ -72,15 +58,21 @@ app.post('/auth/cadastro', async (req, res) => {
         const novo = new User({ ...req.body, saldo: 0.00 });
         await novo.save();
         res.json({ success: true, saldo: 0.00 });
-    } catch (e) { res.json({ success: false, message: "Nome de usuário já existe" }); }
+    } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
 });
 
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo });
-    res.json({ success: true });
+// SAQUE
+app.post('/api/saque', async (req, res) => {
+    const { user, valor, chave } = req.body;
+    const u = await User.findOne({ user });
+    if (u.saldo >= valor && valor >= 10) {
+        await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
+        console.log(`SOLICITAÇÃO DE SAQUE: ${user} - R$${valor} - PIX: ${chave}`);
+        res.json({ success: true });
+    } else res.json({ success: false, message: "Saldo insuficiente ou valor baixo" });
 });
 
-// --- MERCADO PAGO (PIX) ---
+// MERCADO PAGO
 const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
 const payment = new Payment(client);
 
@@ -93,12 +85,8 @@ app.post('/gerar-pix', async (req, res) => {
             external_reference: req.body.userLogado,
             payer: { email: 'contato@slot.com' }
         }});
-        res.json({ 
-            copia_e_cola: result.point_of_interaction.transaction_data.qr_code, 
-            imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 
-        });
+        res.json({ copia_e_cola: result.point_of_interaction.transaction_data.qr_code, imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 });
     } catch (e) { res.status(500).json(e); }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+app.listen(10000, () => console.log("Servidor ON"));
