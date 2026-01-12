@@ -1,18 +1,18 @@
-const express = require('express');
+lconst express = require('express');
 const path = require('path');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 
 const app = express();
 app.use(express.json());
 
-// 1. Resolve o erro de "file not found" apontando para a pasta certa
+// Resolve o problema da pasta public e do erro de arquivo não encontrado
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. LIGA O DINHEIRO REAL (Cole aqui o Access Token do seu print 1000074503.jpg)
+// CONFIGURAÇÃO MERCADO PAGO - COLOQUE SEU TOKEN ABAIXO
 const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
 const payment = new Payment(client);
 
-// 3. ROTA PARA GERAR O PIX DE R$ 5,00
+// ROTA PARA GERAR PIX
 app.post('/gerar-pix', async (req, res) => {
     try {
         const body = {
@@ -28,8 +28,11 @@ app.post('/gerar-pix', async (req, res) => {
             imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64
         });
     } catch (error) {
-        res.status(500).json(error);
+        console.error(error);
+        res.status(500).json({ erro: "Erro no servidor" });
     }
 });
 
-app.listen(process.env.PORT || 10000);
+// Inicia o servidor na porta correta para o Render
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`Servidor ON na porta ${PORT}`));
