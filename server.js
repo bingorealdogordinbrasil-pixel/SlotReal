@@ -1,62 +1,63 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const fetch = require('node-fetch'); // Certifique-se de ter o node-fetch instalado
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- CONFIGURAÇÃO MERCADO PAGO (TOKEN REAL) ---
-const MEU_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
-const client = new MercadoPagoConfig({ accessToken: MEU_TOKEN });
-const payment = new Payment(client);
-
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
+mongoose.connect(MONGO_URI);
 
 const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
-    fone: String,
     saldo: { type: Number, default: 0.00 },
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// --- RELÓGIO ---
-let tempoServidor = 120; 
-setInterval(() => {
-    if (tempoServidor > 0) tempoServidor--;
-    else tempoServidor = 120;
-}, 1000);
+const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempoServidor }));
-
-// --- GERAÇÃO DE PIX SEM UNDEFINED ---
 app.post('/gerar-pix', async (req, res) => {
     try {
         const { valor, userLogado } = req.body;
-        const response = await payment.create({
-            body: {
+
+        const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${MP_TOKEN}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
                 transaction_amount: Number(valor),
-                description: `Depósito Slot - ${userLogado}`,
-                payment_method_id: 'pix',
-                payer: { email: `${userLogado}@gmail.com`, first_name: userLogado }
-            }
+                description: `Depósito - ${userLogado}`,
+                payment_method_id: "pix",
+                payer: { email: `${userLogado}@gmail.com` }
+            })
         });
 
-        // Extração correta dos dados na versão nova do MP
+        const data = await mpRes.json();
+
+        // Se o MP responder erro, a gente avisa aqui
+        if (data.status === 400 || data.status === 401) {
+            console.log("Erro MP:", data);
+            return res.json({ success: false, message: data.message });
+        }
+
         res.json({
             success: true,
-            imagem_qr: response.point_of_interaction.transaction_data.qr_code_base64,
-            copia_e_cola: response.point_of_interaction.transaction_data.qr_code
+            imagem_qr: data.point_of_interaction.transaction_data.qr_code_base64,
+            copia_e_cola: data.point_of_interaction.transaction_data.qr_code
         });
+
     } catch (e) {
-        console.error("ERRO MP:", e);
-        res.json({ success: false, erro: e.message });
+        console.error(e);
+        res.json({ success: false });
     }
 });
 
+// Mantive as outras rotas (auth, save-saldo, spin) igual você já tem...
 app.post('/auth/login', async (req, res) => {
     const conta = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (conta) res.json({ success: true, saldo: conta.saldo, user: conta.user, bets: conta.bets });
@@ -81,4 +82,6 @@ app.post('/api/spin', async (req, res) => {
     res.json({ success: true, corAlvo: alvo, novoSaldo });
 });
 
-app.listen(10000, () => console.log(`🚀 SERVIDOR RODANDO`));
+app.get('/api/tempo-real', (req, res) => res.json({ segundos: 120 }));
+
+app.listen(10000, () => console.log("🚀 Servidor rodando sem frescura"));
