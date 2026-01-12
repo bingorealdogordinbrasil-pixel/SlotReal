@@ -7,21 +7,57 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- CONFIGURAÇÕES ---
-const SENHA_GERENTE = "admin123"; // Mude para sua senha de preferência
-const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
+// SENHA QUE VOCÊ VAI USAR NO PAINEL
+const SENHA_GERENTE = "admin123"; 
 
-// --- CONEXÃO BANCO ---
+const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
 
 const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     fone: String,
-    saldo: { type: Number, default: 0.00 } // CADASTRO SEMPRE COMEÇA ZERADO
+    saldo: { type: Number, default: 0.00 }
 }));
 
-// --- ROTAS DE AUTENTICAÇÃO ---
+// --- ROTAS DO GERENTE (ADMIN) ---
+
+// Essa rota lista os usuários
+app.post('/admin/users', async (req, res) => {
+    try {
+        const { senha } = req.body;
+        if (senha !== SENHA_GERENTE) {
+            return res.status(401).json({ success: false, message: "Senha Inválida" });
+        }
+        const users = await User.find({}, 'user saldo fone');
+        res.json({ success: true, users });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Erro interno" });
+    }
+});
+
+// Essa rota dá o bônus
+app.post('/admin/add-bonus', async (req, res) => {
+    try {
+        const { senha, targetUser, valor } = req.body;
+        if (senha !== SENHA_GERENTE) {
+            return res.status(401).json({ success: false, message: "Senha Inválida" });
+        }
+        
+        const user = await User.findOneAndUpdate(
+            { user: targetUser },
+            { $inc: { saldo: parseFloat(valor) } },
+            { new: true }
+        );
+
+        if (user) res.json({ success: true, novoSaldo: user.saldo });
+        else res.json({ success: false, message: "Usuário não encontrado" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Erro ao processar bônus" });
+    }
+});
+
+// --- RESTO DAS ROTAS (LOGIN, SPIN, ETC) ---
 
 app.post('/auth/cadastro', async (req, res) => {
     try {
@@ -38,95 +74,25 @@ app.post('/auth/login', async (req, res) => {
     else res.json({ success: false, message: "Dados incorretos" });
 });
 
-// --- MOTOR DO JOGO ---
-
 app.post('/api/spin', async (req, res) => {
-    try {
-        const { user, bets } = req.body;
-        const userDb = await User.findOne({ user });
-        if (!userDb) return res.status(404).json({ success: false });
-
-        // Lógica da Casa: Escolhe a cor com menor aposta
-        let corAlvo = 0;
-        let menorValor = Infinity;
-        let coresVazias = [];
-
-        bets.forEach((valor, i) => {
-            if (valor === 0) coresVazias.push(i);
-            if (valor < menorValor) { menorValor = valor; corAlvo = i; }
-        });
-
-        if (coresVazias.length > 0) {
-            corAlvo = coresVazias[Math.floor(Math.random() * coresVazias.length)];
-        }
-
-        const premio = bets[corAlvo] * 5.0; 
-        const novoSaldo = Number((userDb.saldo + premio).toFixed(2));
-        await User.findOneAndUpdate({ user }, { saldo: novoSaldo });
-
-        res.json({ success: true, corAlvo, novoSaldo, ganhou: premio > 0 });
-    } catch (e) { res.status(500).json({ success: false }); }
+    const { user, bets } = req.body;
+    const userDb = await User.findOne({ user });
+    if (!userDb) return res.json({ success: false });
+    
+    // Sorteio simples (escolhe cor que ninguém apostou)
+    let corAlvo = bets.findIndex(b => b === 0);
+    if(corAlvo === -1) corAlvo = Math.floor(Math.random() * 10);
+    
+    const premio = bets[corAlvo] * 5;
+    const novoSaldo = Number((userDb.saldo + premio).toFixed(2));
+    await User.findOneAndUpdate({ user }, { saldo: novoSaldo });
+    res.json({ success: true, corAlvo, novoSaldo, ganhou: premio > 0 });
 });
 
 app.post('/api/save-saldo', async (req, res) => {
-    // Atualiza o saldo após o clique na aposta (débito)
     await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo });
     res.json({ success: true });
 });
 
-// --- PAINEL DO GERENTE (ADMIN) ---
-
-app.post('/admin/users', async (req, res) => {
-    if (req.body.senha !== SENHA_GERENTE) return res.status(403).json({ success: false });
-    const users = await User.find({}, 'user saldo fone');
-    res.json({ success: true, users });
-});
-
-app.post('/admin/add-bonus', async (req, res) => {
-    const { senha, targetUser, valor } = req.body;
-    if (senha !== SENHA_GERENTE) return res.status(403).json({ success: false });
-    
-    const user = await User.findOneAndUpdate(
-        { user: targetUser },
-        { $inc: { saldo: parseFloat(valor) } },
-        { new: true }
-    );
-
-    if (user) res.json({ success: true, novoSaldo: user.saldo });
-    else res.json({ success: false, message: "Usuário não encontrado" });
-});
-
-// --- PAGAMENTOS E SAQUES ---
-
-app.post('/api/saque', async (req, res) => {
-    const { user, valor, chave } = req.body;
-    const u = await User.findOne({ user });
-    if (u && u.saldo >= valor && valor >= 10) {
-        await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
-        console.log(`\n🚨 PEDIDO DE SAQUE 🚨\nUSUÁRIO: ${user}\nVALOR: R$ ${valor}\nPIX: ${chave}\n`);
-        res.json({ success: true });
-    } else res.json({ success: false, message: "Saldo insuficiente ou valor abaixo de R$10" });
-});
-
-const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
-const payment = new Payment(client);
-
-app.post('/gerar-pix', async (req, res) => {
-    try {
-        const result = await payment.create({ body: {
-            transaction_amount: parseFloat(req.body.valor),
-            description: 'Deposito SlotReal',
-            payment_method_id: 'pix',
-            external_reference: req.body.userLogado,
-            payer: { email: 'contato@slot.com' }
-        }});
-        res.json({ 
-            copia_e_cola: result.point_of_interaction.transaction_data.qr_code, 
-            imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 
-        });
-    } catch (e) { res.status(500).json(e); }
-});
-
-// INICIAR SERVIDOR
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 SERVIDOR ON NA PORTA ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 SERVIDOR RODANDO NA PORTA ${PORT}`));
