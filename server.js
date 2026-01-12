@@ -12,7 +12,9 @@ const SENHA_GERENTE = "admin123";
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 
 // CONEXÃO BANCO
-mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("✅ BANCO CONECTADO"))
+  .catch(err => console.error("❌ ERRO MONGO:", err));
 
 const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -22,19 +24,23 @@ const User = mongoose.model('User', new mongoose.Schema({
 }));
 
 // CONFIG MERCADO PAGO
-const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
+const client = new MercadoPagoConfig({ 
+    accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' 
+});
 const payment = new Payment(client);
 
-// --- ROTA DE GERAR PIX (REINSTALADA) ---
+// ROTA PIX
 app.post('/gerar-pix', async (req, res) => {
     try {
         const { valor, userLogado } = req.body;
+        if (!valor || !userLogado) return res.status(400).json({ error: "Dados faltando" });
+
         const result = await payment.create({ body: {
             transaction_amount: parseFloat(valor),
             description: 'Deposito SlotReal',
             payment_method_id: 'pix',
             external_reference: userLogado,
-            payer: { email: 'pix@slotreal.com' }
+            payer: { email: 'contato@slotreal.com' }
         }});
         
         res.json({ 
@@ -42,14 +48,15 @@ app.post('/gerar-pix', async (req, res) => {
             imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 
         });
     } catch (e) {
-        console.error("ERRO PIX:", e);
-        res.status(500).json({ error: "Erro ao gerar PIX" });
+        console.error("ERRO DETALHADO PIX:", e);
+        res.status(500).json({ error: "Erro MP", details: e.message });
     }
 });
 
-// --- ROTAS DO GERENTE ---
+// GERENTE
 app.post('/admin/users', async (req, res) => {
-    if (req.body.senha !== SENHA_GERENTE) return res.status(401).json({ success: false });
+    const { senha } = req.body;
+    if (senha !== SENHA_GERENTE) return res.status(401).json({ success: false });
     const users = await User.find({}, 'user saldo fone');
     res.json({ success: true, users });
 });
@@ -62,7 +69,7 @@ app.post('/admin/add-bonus', async (req, res) => {
     else res.json({ success: false, message: "User não existe" });
 });
 
-// --- ROTAS DO JOGO ---
+// JOGO E AUTH
 app.post('/auth/cadastro', async (req, res) => {
     try {
         const novo = new User({ ...req.body, saldo: 0.00 });
@@ -97,15 +104,4 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/saque', async (req, res) => {
-    const { user, valor, chave } = req.body;
-    const u = await User.findOne({ user });
-    if (u && u.saldo >= valor && valor >= 10) {
-        await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
-        console.log(`SAQUE: ${user} - R$${valor} - PIX: ${chave}`);
-        res.json({ success: true });
-    } else res.json({ success: false });
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 TUDO ONLINE NA PORTA ${PORT}`));
+app.listen(10000, () => console.log(`🚀 SERVIDOR OK` ));
