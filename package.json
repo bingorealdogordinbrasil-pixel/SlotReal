@@ -1,13 +1,14 @@
 {
   "name": "slot-real",
   "version": "1.0.0",
-  "description": "",
+  "description": "Jogo de Slot com Banco de Dados",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "mercadopago": "^2.0.8"
+    "mongoose": "^8.0.0",
+    "mercadopago": "^2.0.11"
   }
 }
