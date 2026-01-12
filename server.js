@@ -7,14 +7,9 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- CONFIGURAÇÃO BLINDADA DO MERCADO PAGO ---
-// O .trim() remove qualquer espaço que você tenha colado sem querer
+// --- CONFIGURAÇÃO MERCADO PAGO (TOKEN REAL) ---
 const MEU_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
-
-const client = new MercadoPagoConfig({ 
-    accessToken: MEU_TOKEN,
-    options: { timeout: 5000 } 
-});
+const client = new MercadoPagoConfig({ accessToken: MEU_TOKEN });
 const payment = new Payment(client);
 
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
@@ -37,40 +32,31 @@ setInterval(() => {
 
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempoServidor }));
 
-// --- GERAÇÃO DE PIX (CORRIGIDA) ---
+// --- GERAÇÃO DE PIX SEM UNDEFINED ---
 app.post('/gerar-pix', async (req, res) => {
     try {
         const { valor, userLogado } = req.body;
-        
-        const paymentData = {
+        const response = await payment.create({
             body: {
                 transaction_amount: Number(valor),
                 description: `Depósito Slot - ${userLogado}`,
                 payment_method_id: 'pix',
-                payer: {
-                    email: `${userLogado}@gmail.com`,
-                    first_name: userLogado
-                }
+                payer: { email: `${userLogado}@gmail.com`, first_name: userLogado }
             }
-        };
-
-        const result = await payment.create(paymentData);
-
-        // Retorna os dados para o HTML
-        res.json({
-            success: true,
-            imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64,
-            copia_e_cola: result.point_of_interaction.transaction_data.qr_code
         });
 
+        // Extração correta dos dados na versão nova do MP
+        res.json({
+            success: true,
+            imagem_qr: response.point_of_interaction.transaction_data.qr_code_base64,
+            copia_e_cola: response.point_of_interaction.transaction_data.qr_code
+        });
     } catch (e) {
         console.error("ERRO MP:", e);
-        // Se cair aqui, o Token está errado ou a conta MP tem problemas
-        res.json({ success: false, message: e.message });
+        res.json({ success: false, erro: e.message });
     }
 });
 
-// --- RESTO DAS FUNÇÕES ---
 app.post('/auth/login', async (req, res) => {
     const conta = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (conta) res.json({ success: true, saldo: conta.saldo, user: conta.user, bets: conta.bets });
