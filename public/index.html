@@ -8,63 +8,81 @@
         body { background: #050505; color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
         #tela-login, #tela-jogo { width: 100%; display: flex; flex-direction: column; align-items: center; }
         #tela-jogo { display: none; }
-        .card { background: #111; padding: 20px; border-radius: 20px; border: 1px solid #d4af37; width: 320px; text-align: center; margin-top: 20px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #222; color: white; border: none; box-sizing: border-box; }
+        
+        /* CARD DE LOGIN */
+        .card-login { background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; text-align: center; margin-top: 80px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; background: #222; color: white; }
         .btn-gold { background: #d4af37; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; color: black; }
-        .top-bar { width: 100%; background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; font-size: 13px; align-items: center; }
-        .timer { font-size: 28px; color: #d4af37; font-weight: bold; margin: 5px 0; text-shadow: 0 0 10px rgba(212,175,55,0.5); }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; background: #000; padding: 8px; border-radius: 10px; }
-        .cell { width: 32px; height: 32px; border-radius: 4px; font-size: 8px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 15px; }
-        .bet-btn { background: #222; padding: 10px 0; border-radius: 8px; font-size: 10px; border-bottom: 3px solid transparent; cursor: pointer; }
+        
+        /* BARRA SUPERIOR */
+        .top-bar { width: 100%; background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; align-items: center; position: sticky; top: 0; z-index: 10; }
+        
+        /* O TABULEIRO (GRID) */
+        .grid-container { background: #111; padding: 15px; border-radius: 15px; border: 1px solid #333; margin-top: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+        .cell { width: 40px; height: 40px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; color: white; text-shadow: 1px 1px 2px black; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* BOTÕES DE APOSTA */
+        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 340px; margin-top: 20px; }
+        .bet-btn { background: #222; padding: 12px 0; border-radius: 8px; cursor: pointer; text-align: center; font-size: 11px; border-bottom: 4px solid transparent; transition: 0.2s; }
+        .bet-btn:active { transform: scale(0.95); }
+        
+        .timer-box { text-align: center; margin-top: 10px; }
+        .timer-val { color: #d4af37; font-size: 28px; font-weight: bold; }
+        
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 25px; border-radius: 20px; z-index: 1000; width: 280px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div id="tela-login">
-        <div class="card" style="margin-top: 100px;">
-            <h2 id="t-auth" style="color:#d4af37">ACESSAR</h2>
+        <div class="card-login">
+            <h2 id="t-auth" style="color:#d4af37">LOGIN</h2>
             <input type="text" id="u" placeholder="Usuário">
             <input type="password" id="p" placeholder="Senha">
             <div id="f-area" style="display:none"><input type="text" id="f" placeholder="WhatsApp"></div>
-            <button class="btn-gold" onclick="auth()">ENTRAR</button>
-            <p onclick="toggle()" style="font-size:12px; cursor:pointer; color:#aaa; margin-top:15px;">Criar nova conta</p>
+            <button class="btn-gold" onclick="auth()">ACESSAR SISTEMA</button>
+            <p onclick="toggle()" style="font-size:12px; cursor:pointer; color:#aaa; margin-top:15px;">Criar Conta</p>
         </div>
     </div>
 
     <div id="tela-jogo">
         <div class="top-bar">
-            <div>SALDO: R$ <span id="s-display" style="color:#2ecc71; font-weight:bold;">0.00</span></div>
-            <button onclick="openM('m-pix')" style="background:#009ee3; border:none; color:white; padding:8px 12px; border-radius:8px; font-weight:bold;">DEPÓSITO</button>
-            <button onclick="openM('m-saque')" style="background:#e74c3c; border:none; color:white; padding:8px 12px; border-radius:8px; font-weight:bold;">SAQUE</button>
+            <div>SALDO: <span id="s-display" style="color:#2ecc71; font-weight:bold;">0.00</span></div>
+            <button onclick="openM('m-pix')" style="width:80px; background:#009ee3; border:none; color:white; border-radius:5px; padding:5px;">DEPÓSITO</button>
+            <button onclick="openM('m-saque')" style="width:80px; background:#e74c3c; border:none; color:white; border-radius:5px; padding:5px;">SAQUE</button>
         </div>
-        
-        <div class="card">
-            <div id="status-txt" style="font-size:12px; color:#aaa;">SORTEIO AUTOMÁTICO EM</div>
-            <div class="timer" id="timer">02:00</div>
+
+        <div class="timer-box">
+            <div style="font-size: 10px; color: #888;">PRÓXIMO GIRO EM</div>
+            <div class="timer-val" id="timer">02:00</div>
+        </div>
+
+        <div class="grid-container">
             <div class="grid" id="grid"></div>
-            <div class="bet-area" id="bet-area"></div>
-            <p style="font-size: 10px; color: #444; margin-top: 15px;">Deposite para começar a jogar!</p>
         </div>
+
+        <div class="bet-area" id="bet-area"></div>
+        
+        <p style="font-size:10px; color:#444; margin-top:20px;">Escolha uma cor abaixo para apostar R$ 1,00</p>
     </div>
 
     <div id="m-pix" class="modal">
-        <h3>Recarregar Saldo</h3>
-        <input type="number" id="v-pix" value="10" style="color:black; background:#eee;">
-        <button onclick="gerarP()" class="btn-gold">GERAR PIX</button>
-        <div id="res-pix" style="display:none; margin-top:15px;">
-            <img id="q-img" style="width:150px;">
-            <button onclick="copyP()" style="background:#222; color:white; width:100%; padding:10px; border-radius:5px; border:none; margin-top:10px;">COPIAR CÓDIGO</button>
+        <h3>Depositar</h3>
+        <input type="number" id="v-pix" value="20" style="color:black; background:#eee;">
+        <button class="btn-gold" onclick="gerarP()">GERAR PIX</button>
+        <div id="res-pix" style="display:none">
+            <img id="q-img" style="width:150px; margin:10px;">
+            <button onclick="copyP()" style="background:black; color:white; padding:10px; width:100%; border:none; border-radius:5px;">COPIAR CÓDIGO</button>
         </div>
         <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:15px;">FECHAR</button>
     </div>
 
     <div id="m-saque" class="modal">
-        <h3>Sacar Saldo</h3>
-        <input type="text" id="ch-saque" placeholder="Chave PIX">
-        <input type="number" id="val-saque" placeholder="Valor R$">
-        <button onclick="sacar()" class="btn-gold">SOLICITAR AGORA</button>
+        <h3>Sacar</h3>
+        <input type="text" id="ch-saque" placeholder="Chave PIX" style="color:black; background:#eee;">
+        <input type="number" id="val-saque" placeholder="Valor Mín R$ 10" style="color:black; background:#eee;">
+        <button class="btn-gold" onclick="sacar()">PEDIR SAQUE</button>
         <button onclick="closeM()" style="color:red; background:none; border:none; margin-top:15px;">CANCELAR</button>
     </div>
 
@@ -74,7 +92,7 @@
     const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
     const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
 
-    function toggle() { isLog = !isLog; document.getElementById('t-auth').innerText = isLog ? 'ENTRAR' : 'CADASTRO'; document.getElementById('f-area').style.display = isLog ? 'none' : 'block'; }
+    function toggle() { isLog = !isLog; document.getElementById('t-auth').innerText = isLog ? 'LOGIN' : 'CADASTRO'; document.getElementById('f-area').style.display = isLog ? 'none' : 'block'; }
     
     async function auth() {
         const u = document.getElementById('u').value, p = document.getElementById('p').value;
@@ -87,19 +105,29 @@
         document.getElementById('tela-login').style.display = 'none';
         document.getElementById('tela-jogo').style.display = 'flex';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        MAP.forEach((v, i) => { 
-            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${v}`;
-            c.style.background = CORES[i%10]; g.appendChild(c);
-        });
+        
+        // GERA O GRID 8x8 COM O CAMINHO "R$ 5"
+        for(let i=0; i<64; i++) {
+            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
+            const pos = MAP.indexOf(i);
+            if(pos !== -1) {
+                c.style.background = CORES[pos % 10];
+                c.innerText = 'R$ 5';
+            } else {
+                c.style.opacity = '0.05'; // Deixa o meio vazio
+            }
+            g.appendChild(c);
+        }
+
         const ba = document.getElementById('bet-area'); ba.innerHTML = '';
         CORES.forEach((c, i) => {
-            const btn = document.createElement('div'); btn.className = 'bet-btn'; btn.style.borderBottom = `3px solid ${c}`;
-            btn.innerHTML = `Cor ${i}<br><span id="v-${i}">0</span>`;
+            const btn = document.createElement('div'); btn.className = 'bet-btn'; btn.style.borderBottom = `4px solid ${c}`;
+            btn.innerHTML = `<span style="color:#888; font-size:9px;">COR ${i}</span><br><b id="v-${i}">0</b>`;
             btn.onclick = async () => { 
-                if(!bloqueado && state.s >= 1.0) { // MÍNIMO 1 REAL POR CLIQUE
+                if(!bloqueado && state.s >= 1.0) { 
                     state.b[i] += 1.0; state.s -= 1.0; update(); 
                     await fetch('/api/save-saldo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s})});
-                } else if(state.s < 1.0) alert("Saldo insuficiente! Deposite primeiro.");
+                } else if(state.s < 1.0) alert("Sem saldo! Deposite para jogar.");
             };
             ba.appendChild(btn);
         });
@@ -117,38 +145,42 @@
 
     async function rodar() {
         bloqueado = true;
-        document.getElementById('status-txt').innerText = "SORTEANDO...";
         const res = await fetch('/api/spin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: state.u, bets: state.b })});
         const data = await res.json();
         let targetIdx = MAP.indexOf(MAP.find((v,i) => i%10 === data.corAlvo));
         let steps = (MAP.length * 3) + targetIdx, cur = 0;
+        
         const loop = () => {
             document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
+            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 15px white';
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 20px white';
+            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1.2)';
             cur++;
-            if(cur < steps) setTimeout(loop, 30 + (cur > steps-20 ? (cur-(steps-20))*10 : 0));
+            if(cur < steps) setTimeout(loop, 40 + (cur > steps-15 ? (cur-(steps-15))*20 : 0));
             else {
                 state.s = data.novoSaldo; state.b.fill(0); update();
-                if(data.ganhou) alert("VOCÊ GANHOU!");
-                setTimeout(() => { bloqueado = false; tempo = 120; document.getElementById('status-txt').innerText = "SORTEIO AUTOMÁTICO EM"; }, 3000);
+                setTimeout(() => { bloqueado = false; tempo = 120; }, 3000);
             }
         };
         loop();
     }
 
+    function update() { 
+        document.getElementById('s-display').innerText = state.s.toFixed(2); 
+        state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v.toFixed(0); }); 
+    }
+    
+    async function gerarP() { const res = await fetch('/gerar-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userLogado: state.u, valor: document.getElementById('v-pix').value })}); const d = await res.json(); document.getElementById('q-img').src = "data:image/jpeg;base64,"+d.imagem_qr; state.pix = d.copia_e_cola; document.getElementById('res-pix').style.display = 'block'; }
+    function copyP() { navigator.clipboard.writeText(state.pix); alert("Copiado!"); }
+    function openM(id) { document.getElementById(id).style.display = 'block'; }
+    function closeM() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
     async function sacar() {
         const val = document.getElementById('val-saque').value, ch = document.getElementById('ch-saque').value;
         const res = await fetch('/api/saque', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user: state.u, valor: val, chave: ch })});
-        const data = await res.json();
-        if(data.success) { alert("Solicitação de saque enviada!"); state.s -= val; update(); closeM(); } else alert(data.message);
+        const d = await res.json();
+        if(d.success) { alert("Saque solicitado!"); state.s -= val; update(); closeM(); } else alert(d.message);
     }
-
-    function update() { document.getElementById('s-display').innerText = state.s.toFixed(2); state.b.forEach((v,i) => { if(document.getElementById(`v-${i}`)) document.getElementById(`v-${i}`).innerText = v.toFixed(0); }); }
-    async function gerarP() { const res = await fetch('/gerar-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userLogado: state.u, valor: document.getElementById('v-pix').value })}); const d = await res.json(); document.getElementById('q-img').src = "data:image/jpeg;base64,"+d.imagem_qr; state.pix = d.copia_e_cola; document.getElementById('res-pix').style.display = 'block'; }
-    function copyP() { navigator.clipboard.writeText(state.pix); alert("Código Copiado!"); }
-    function openM(id) { document.getElementById(id).style.display = 'block'; }
-    function closeM() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 </script>
 </body>
 </html>
