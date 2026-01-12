@@ -15,8 +15,13 @@ const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     fone: String,
-    saldo: { type: Number, default: 0.00 } // SALDO INICIAL ZERADO
+    saldo: { type: Number, default: 0.00 } // FORÇADO ZERADO AQUI
 }));
+
+// ROTA PRINCIPAL - Garante que o site abra o index.html sem erro
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // LÓGICA DE GIRO (QUEM GANHA PERDE, QUEM PERDE PERDEU)
 app.post('/api/spin', async (req, res) => {
@@ -25,7 +30,6 @@ app.post('/api/spin', async (req, res) => {
         const userDb = await User.findOne({ user });
         if (!userDb) return res.status(404).json({ success: false });
 
-        // ACHA A COR QUE DÁ MENOS PREJUÍZO (CASA SEMPRE GANHA NO VOLUME)
         let corAlvo = 0;
         let menorValor = Infinity;
         let coresVazias = [];
@@ -35,32 +39,27 @@ app.post('/api/spin', async (req, res) => {
             if (valor < menorValor) { menorValor = valor; corAlvo = i; }
         });
 
-        // Se houver cores sem aposta, cai nelas para a casa não pagar nada
         if (coresVazias.length > 0) {
             corAlvo = coresVazias[Math.floor(Math.random() * coresVazias.length)];
         }
 
-        // O prêmio é calculado apenas se o servidor escolheu a cor que ele apostou
         const premio = bets[corAlvo] * 5.0; 
-        
-        // NOVO SALDO: O saldo já foi descontado no HTML ao apostar, 
-        // aqui o servidor apenas SOMA o prêmio se ele ganhou.
         const novoSaldoOficial = Number((userDb.saldo + premio).toFixed(2));
         await User.findOneAndUpdate({ user }, { saldo: novoSaldoOficial });
 
-        res.json({ 
-            success: true, 
-            corAlvo, 
-            novoSaldo: novoSaldoOficial, 
-            ganhou: premio > 0 
-        });
+        res.json({ success: true, corAlvo, novoSaldo: novoSaldoOficial, ganhou: premio > 0 });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-// CADASTRO COM SALDO ZERO
+// CADASTRO COM SALDO ZERO ABSOLUTO
 app.post('/auth/cadastro', async (req, res) => {
     try {
-        const novo = new User({ ...req.body, saldo: 0.00 });
+        const novo = new User({ 
+            user: req.body.user, 
+            pass: req.body.pass, 
+            fone: req.body.fone, 
+            saldo: 0.00 // ZERADO AQUI TAMBÉM
+        });
         await novo.save();
         res.json({ success: true, saldo: 0.00 });
     } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
@@ -84,9 +83,8 @@ app.post('/api/saque', async (req, res) => {
     const u = await User.findOne({ user });
     if (u && u.saldo >= valor && valor >= 10) {
         await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
-        console.log(`--- SOLICITAÇÃO DE SAQUE --- \nUser: ${user} \nValor: R$${valor} \nPIX: ${chave}`);
         res.json({ success: true });
-    } else res.json({ success: false, message: "Saldo insuficiente (Mínimo R$10)" });
+    } else res.json({ success: false, message: "Saldo insuficiente" });
 });
 
 // MERCADO PAGO
@@ -106,4 +104,4 @@ app.post('/gerar-pix', async (req, res) => {
     } catch (e) { res.status(500).json(e); }
 });
 
-app.listen(10000, () => console.log("🔥 MOTOR LIGADO NA 10000"));
+app.listen(10000, () => console.log("🔥 MOTOR LIGADO"));
