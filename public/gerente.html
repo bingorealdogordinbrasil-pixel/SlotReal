@@ -1,142 +1,119 @@
-const express = require('express');
-const path = require('path');
-const mongoose = require('mongoose');
-const https = require('https');
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerente - SlotReal</title>
+    <style>
+        body { background: #050505; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        .container { max-width: 900px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; margin-bottom: 20px; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; width: 200px; }
+        .btn { background: #d4af37; color: black; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
+        th { color: #d4af37; background: #222; }
+        .bonus-section { border: 1px dashed #d4af37; padding: 15px; margin-bottom: 20px; border-radius: 10px; }
+    </style>
+</head>
+<body>
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+<div class="container">
+    <h2>👑 PAINEL ADMINISTRATIVO</h2>
+    <input type="password" id="pass-admin" placeholder="Senha do Gerente">
+    <button class="btn" onclick="carregarLista()">ATUALIZAR TUDO</button>
+</div>
 
-// --- CONFIGURAÇÃO ---
-const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
-const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-const SENHA_ADMIN = "123456"; // Altere se desejar
+<div class="container" style="border-color: #e74c3c;">
+    <h3 style="color:#e74c3c; margin:0 0 10px 0;">💸 PEDIDOS DE SAQUE</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>USUÁRIO</th>
+                <th>VALOR</th>
+                <th>CHAVE PIX</th>
+                <th>AÇÃO</th>
+            </tr>
+        </thead>
+        <tbody id="saque-list">
+            <tr><td colspan="4">Carregue a lista...</td></tr>
+        </tbody>
+    </table>
+</div>
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA CONECTADO"));
+<div class="container">
+    <div class="bonus-section">
+        <h3>🎁 DAR BÔNUS</h3>
+        <input type="text" id="target-id" placeholder="Usuário" readonly>
+        <input type="number" id="bonus-val" placeholder="Valor R$">
+        <button class="btn" onclick="enviarBonus()" style="background:#2ecc71; color:white;">ENVIAR BÔNUS</button>
+    </div>
 
-// --- MODELOS ---
-const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
-    user: { type: String, unique: true },
-    email: { type: String, unique: true },
-    pass: String,
-    saldo: { type: Number, default: 0.00 },
-    ganhos: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
-}));
+    <table>
+        <thead>
+            <tr>
+                <th>USUÁRIO</th>
+                <th>SALDO (R$)</th>
+                <th>AÇÃO</th>
+            </tr>
+        </thead>
+        <tbody id="user-list"></tbody>
+    </table>
+</div>
 
-const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Schema({
-    user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
-}));
+<script>
+    async function carregarLista() {
+        const senha = document.getElementById('pass-admin').value;
+        if(!senha) return alert("Digite a senha!");
 
-// --- ROTAS DO GERENTE (CONECTANDO COM SEU HTML) ---
+        try {
+            const res = await fetch('/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senha })
+            });
+            const data = await res.json();
 
-app.post('/admin/users', async (req, res) => {
-    const { senha } = req.body;
-    if (senha !== SENHA_ADMIN) return res.json({ success: false, message: "Senha incorreta!" });
+            if (data.success) {
+                // Preenche Usuários
+                const tbodyU = document.getElementById('user-list');
+                tbodyU.innerHTML = '';
+                data.users.forEach(u => {
+                    tbodyU.innerHTML += `<tr><td>${u.user}</td><td style="color:#2ecc71">R$ ${u.saldo.toFixed(2)}</td><td><button onclick="selecionar('${u.user}')">Selecionar</button></td></tr>`;
+                });
 
-    try {
-        const users = await User.find({});
-        const saques = await Saque.find({ status: 'Pendente' });
-        res.json({ success: true, users, saques });
-    } catch (e) { res.json({ success: false, message: "Erro ao buscar dados" }); }
-});
+                // Preenche Saques (Aqui está a mágica!)
+                const tbodyS = document.getElementById('saque-list');
+                tbodyS.innerHTML = data.saques.length ? '' : '<tr><td colspan="4">Nenhum saque pendente.</td></tr>';
+                data.saques.forEach(s => {
+                    tbodyS.innerHTML += `
+                        <tr>
+                            <td>${s.user}</td>
+                            <td style="color:#e74c3c">R$ ${s.valor.toFixed(2)}</td>
+                            <td style="background:#000; font-family:monospace">${s.chavePix}</td>
+                            <td><button onclick="finalizarSaque('${s._id}')" style="background:#2ecc71; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer;">MARCAR PAGO</button></td>
+                        </tr>`;
+                });
+            } else { alert(data.message); }
+        } catch (err) { alert("Erro de conexão!"); }
+    }
 
-app.post('/admin/add-bonus', async (req, res) => {
-    const { senha, targetUser, valor } = req.body;
-    if (senha !== SENHA_ADMIN) return res.json({ success: false });
+    function selecionar(id) { document.getElementById('target-id').value = id; }
 
-    try {
-        const u = await User.findOne({ user: targetUser });
-        if (u) {
-            u.saldo += Number(valor);
-            await u.save();
-            res.json({ success: true });
-        } else { res.json({ success: false, message: "Usuário não encontrado" }); }
-    } catch (e) { res.json({ success: false }); }
-});
+    async function enviarBonus() {
+        const senha = document.getElementById('pass-admin').value;
+        const targetUser = document.getElementById('target-id').value;
+        const valor = document.getElementById('bonus-val').value;
+        const res = await fetch('/admin/add-bonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha, targetUser, valor }) });
+        const d = await res.json();
+        if(d.success) { alert("Bônus enviado!"); carregarLista(); }
+    }
 
-app.post('/admin/finalizar-saque', async (req, res) => {
-    const { senha, id } = req.body;
-    if (senha !== SENHA_ADMIN) return res.json({ success: false });
-
-    try {
-        await Saque.findByIdAndUpdate(id, { status: 'Pago' });
-        res.json({ success: true });
-    } catch (e) { res.json({ success: false }); }
-});
-
-// --- ROTAS DO JOGO E PIX (MANTIDAS) ---
-
-app.post('/auth/register', async (req, res) => {
-    try {
-        const { user, pass, email } = req.body;
-        const novo = await User.create({ user, pass, email });
-        res.json({ success: true, user: novo.user, saldo: 0, ganhos: 0 });
-    } catch (e) { res.json({ success: false, message: "Erro ou usuário já existe" }); }
-});
-
-app.post('/auth/login', async (req, res) => {
-    const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-    if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos });
-    else res.json({ success: false, message: "Incorreto" });
-});
-
-app.post('/gerar-pix', (req, res) => {
-    const { valor, userLogado } = req.body;
-    const postData = JSON.stringify({
-        transaction_amount: Number(valor),
-        description: `Deposito_${userLogado}`,
-        payment_method_id: "pix",
-        payer: { email: `user${Date.now()}@gmail.com`, identification: { type: "CPF", number: "19119119100" } }
-    });
-    const options = {
-        hostname: 'api.mercadopago.com',
-        path: '/v1/payments',
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': 'k' + Date.now() }
-    };
-    const mpReq = https.request(options, (mpRes) => {
-        let b = '';
-        mpRes.on('data', d => b += d);
-        mpRes.on('end', () => {
-            try {
-                const r = JSON.parse(b);
-                res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code });
-            } catch (e) { res.json({ success: false }); }
-        });
-    });
-    mpReq.write(postData); mpReq.end();
-});
-
-app.post('/solicitar-saque', async (req, res) => {
-    const { user, valor, chavePix } = req.body;
-    const u = await User.findOne({ user });
-    if (u && u.ganhos >= valor) {
-        u.ganhos -= valor; u.saldo -= valor;
-        await u.save();
-        await Saque.create({ user, valor, chavePix });
-        res.json({ success: true, novoSaldo: u.saldo, novoGanhos: u.ganhos });
-    } else { res.json({ success: false, message: "Saldo insuficiente" }); }
-});
-
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
-    res.json({ success: true });
-});
-
-app.post('/api/spin', async (req, res) => {
-    const u = await User.findOne({ user: req.body.user });
-    let menor = Math.min(...u.bets), cores = [];
-    u.bets.forEach((v, i) => { if(v === menor) cores.push(i); });
-    const alvo = cores[Math.floor(Math.random() * cores.length)];
-    const ganho = u.bets[alvo] * 5;
-    u.saldo += ganho; u.ganhos += ganho;
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: u.saldo, ganhos: u.ganhos, bets: [0,0,0,0,0,0,0,0,0,0] });
-    res.json({ success: true, corAlvo: alvo, novoSaldo: u.saldo, novoGanhos: u.ganhos });
-});
-
-let t = 120; setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Servidor SlotReal Rodando!"));
+    async function finalizarSaque(id) {
+        const senha = document.getElementById('pass-admin').value;
+        if(!confirm("Já pagou o PIX?")) return;
+        await fetch('/admin/finalizar-saque', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha, id }) });
+        carregarLista();
+    }
+</script>
+</body>
+</html>
