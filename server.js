@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA BLINDADO ON"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA ON E MANIPULADO"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -43,7 +43,6 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
-// SPIN MANIPULADO: BATE NO MENOS APOSTADO
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
