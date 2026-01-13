@@ -1,109 +1,120 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const https = require('https');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// CONEXÃO BANCO DE DADOS
+// --- CONFIGURAÇÃO ---
+const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
+const SENHA_ADMIN = "123456"; 
 
-const User = mongoose.model('User', new mongoose.Schema({
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA ONLINE"));
+
+// --- MODELOS ---
+const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
+    email: { type: String, unique: true },
     pass: String,
-    fone: String,
-    saldo: { type: Number, default: 0.00 } // SALDO INICIAL ZERADO
+    saldo: { type: Number, default: 0.00 },
+    ganhos: { type: Number, default: 0.00 },
+    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// LÓGICA DE GIRO (QUEM GANHA PERDE, QUEM PERDE PERDEU)
+const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Schema({
+    user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
+}));
+
+// --- TIMER GLOBAL (OS 120 SEGUNDOS) ---
+let t = 120; 
+setInterval(() => { 
+    if(t > 0) t--; 
+    else t = 120; 
+}, 1000);
+
+app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
+
+// --- LOGIN (AGORA CARREGA AS APOSTAS SALVAS) ---
+app.post('/auth/login', async (req, res) => {
+    try {
+        const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
+        if (c) {
+            // Retorna as bets para o front não resetar ao atualizar
+            res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
+        } else {
+            res.json({ success: false, message: "Dados incorretos" });
+        }
+    } catch (e) { res.json({ success: false }); }
+});
+
+// --- SALVAR APOSTAS (PARA NÃO SUMIR AO ATUALIZAR) ---
+app.post('/api/save-saldo', async (req, res) => {
+    try {
+        const { user, saldo, bets } = req.body;
+        await User.findOneAndUpdate({ user }, { saldo, bets });
+        res.json({ success: true });
+    } catch (e) { res.json({ success: false }); }
+});
+
+// --- QR CODE PIX ---
+app.post('/gerar-pix', (req, res) => {
+    const { valor, userLogado } = req.body;
+    const cleanUser = String(userLogado || "user").replace(/[^a-zA-Z0-9]/g, '');
+    const postData = JSON.stringify({
+        transaction_amount: Number(valor),
+        description: `Dep_${cleanUser}`,
+        payment_method_id: "pix",
+        payer: {
+            email: `${cleanUser}@gmail.com`,
+            first_name: cleanUser,
+            last_name: "Cliente",
+            identification: { type: "CPF", number: "19119119100" }
+        }
+    });
+    const options = {
+        hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
+        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': 'k' + Date.now() }
+    };
+    const mpReq = https.request(options, (mpRes) => {
+        let b = ''; mpRes.on('data', d => b += d);
+        mpRes.on('end', () => {
+            try {
+                const r = JSON.parse(b);
+                res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code });
+            } catch (e) { res.json({ success: false }); }
+        });
+    });
+    mpReq.write(postData); mpReq.end();
+});
+
+// --- GERENTE ---
+app.post('/admin/users', async (req, res) => {
+    try {
+        const { senha } = req.body;
+        if (senha !== SENHA_ADMIN) return res.json({ success: false });
+        const users = await User.find({});
+        const saques = await Saque.find({ status: 'Pendente' });
+        res.json({ success: true, users, saques });
+    } catch (e) { res.json({ success: false }); }
+});
+
+// --- SPIN (GIRO) ---
 app.post('/api/spin', async (req, res) => {
     try {
-        const { user, bets } = req.body;
-        const userDb = await User.findOne({ user });
-        if (!userDb) return res.status(404).json({ success: false });
-
-        // ACHA A COR QUE DÁ MENOS PREJUÍZO (CASA SEMPRE GANHA NO VOLUME)
-        let corAlvo = 0;
-        let menorValor = Infinity;
-        let coresVazias = [];
-
-        bets.forEach((valor, i) => {
-            if (valor === 0) coresVazias.push(i);
-            if (valor < menorValor) { menorValor = valor; corAlvo = i; }
-        });
-
-        // Se houver cores sem aposta, cai nelas para a casa não pagar nada
-        if (coresVazias.length > 0) {
-            corAlvo = coresVazias[Math.floor(Math.random() * coresVazias.length)];
-        }
-
-        // O prêmio é calculado apenas se o servidor escolheu a cor que ele apostou
-        const premio = bets[corAlvo] * 5.0; 
-        
-        // NOVO SALDO: O saldo já foi descontado no HTML ao apostar, 
-        // aqui o servidor apenas SOMA o prêmio se ele ganhou.
-        const novoSaldoOficial = Number((userDb.saldo + premio).toFixed(2));
-        await User.findOneAndUpdate({ user }, { saldo: novoSaldoOficial });
-
-        res.json({ 
-            success: true, 
-            corAlvo, 
-            novoSaldo: novoSaldoOficial, 
-            ganhou: premio > 0 
-        });
-    } catch (e) { res.status(500).json({ success: false }); }
+        const u = await User.findOne({ user: req.body.user });
+        let menor = Math.min(...u.bets), cores = [];
+        u.bets.forEach((v, i) => { if(v === menor) cores.push(i); });
+        const alvo = cores[Math.floor(Math.random() * cores.length)];
+        const ganho = u.bets[alvo] * 5;
+        const nS = Number((u.saldo + ganho).toFixed(2));
+        const nG = Number((u.ganhos + ganho).toFixed(2));
+        await User.findOneAndUpdate({ user: req.body.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
+        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG });
+    } catch (e) { res.json({ success: false }); }
 });
 
-// CADASTRO COM SALDO ZERO
-app.post('/auth/cadastro', async (req, res) => {
-    try {
-        const novo = new User({ ...req.body, saldo: 0.00 });
-        await novo.save();
-        res.json({ success: true, saldo: 0.00 });
-    } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
-});
-
-app.post('/auth/login', async (req, res) => {
-    const { user, pass } = req.body;
-    const conta = await User.findOne({ user, pass });
-    if (conta) res.json({ success: true, saldo: conta.saldo });
-    else res.json({ success: false, message: "Dados incorretos" });
-});
-
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo });
-    res.json({ success: true });
-});
-
-// SAQUE
-app.post('/api/saque', async (req, res) => {
-    const { user, valor, chave } = req.body;
-    const u = await User.findOne({ user });
-    if (u && u.saldo >= valor && valor >= 10) {
-        await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
-        console.log(`--- SOLICITAÇÃO DE SAQUE --- \nUser: ${user} \nValor: R$${valor} \nPIX: ${chave}`);
-        res.json({ success: true });
-    } else res.json({ success: false, message: "Saldo insuficiente (Mínimo R$10)" });
-});
-
-// MERCADO PAGO
-const client = new MercadoPagoConfig({ accessToken: 'APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741' });
-const payment = new Payment(client);
-
-app.post('/gerar-pix', async (req, res) => {
-    try {
-        const result = await payment.create({ body: {
-            transaction_amount: parseFloat(req.body.valor),
-            description: 'Deposito SlotReal',
-            payment_method_id: 'pix',
-            external_reference: req.body.userLogado,
-            payer: { email: 'pix@slot.com' }
-        }});
-        res.json({ copia_e_cola: result.point_of_interaction.transaction_data.qr_code, imagem_qr: result.point_of_interaction.transaction_data.qr_code_base64 });
-    } catch (e) { res.status(500).json(e); }
-});
-
-app.listen(10000, () => console.log("🔥 MOTOR LIGADO NA 10000"));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log("🔥 RODANDO"));
