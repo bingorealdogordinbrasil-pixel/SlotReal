@@ -12,7 +12,7 @@ const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa93
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "123456"; 
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA ONLINE"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA SLOTGOLD CONECTADO"));
 
 // --- MODELOS ---
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
@@ -28,29 +28,21 @@ const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Sche
     user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
 }));
 
-// --- TIMER GLOBAL (OS 120 SEGUNDOS) ---
-let t = 120; 
-setInterval(() => { 
-    if(t > 0) t--; 
-    else t = 120; 
-}, 1000);
-
+// --- TIMER GLOBAL (120 SEGUNDOS) ---
+let t = 120;
+setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
-// --- LOGIN (AGORA CARREGA AS APOSTAS SALVAS) ---
+// --- LOGIN (CARREGA AS APOSTAS PARA NÃO SUMIR NO F5) ---
 app.post('/auth/login', async (req, res) => {
     try {
         const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-        if (c) {
-            // Retorna as bets para o front não resetar ao atualizar
-            res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
-        } else {
-            res.json({ success: false, message: "Dados incorretos" });
-        }
+        if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
+        else res.json({ success: false, message: "Incorreto" });
     } catch (e) { res.json({ success: false }); }
 });
 
-// --- SALVAR APOSTAS (PARA NÃO SUMIR AO ATUALIZAR) ---
+// --- SALVA APOSTA IMEDIATAMENTE ---
 app.post('/api/save-saldo', async (req, res) => {
     try {
         const { user, saldo, bets } = req.body;
@@ -59,7 +51,7 @@ app.post('/api/save-saldo', async (req, res) => {
     } catch (e) { res.json({ success: false }); }
 });
 
-// --- QR CODE PIX ---
+// --- QR CODE PIX (CORRIGIDO) ---
 app.post('/gerar-pix', (req, res) => {
     const { valor, userLogado } = req.body;
     const cleanUser = String(userLogado || "user").replace(/[^a-zA-Z0-9]/g, '');
@@ -90,18 +82,7 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.write(postData); mpReq.end();
 });
 
-// --- GERENTE ---
-app.post('/admin/users', async (req, res) => {
-    try {
-        const { senha } = req.body;
-        if (senha !== SENHA_ADMIN) return res.json({ success: false });
-        const users = await User.find({});
-        const saques = await Saque.find({ status: 'Pendente' });
-        res.json({ success: true, users, saques });
-    } catch (e) { res.json({ success: false }); }
-});
-
-// --- SPIN (GIRO) ---
+// --- SPIN (SÓ LIMPA AS BETS AQUI) ---
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
@@ -111,10 +92,21 @@ app.post('/api/spin', async (req, res) => {
         const ganho = u.bets[alvo] * 5;
         const nS = Number((u.saldo + ganho).toFixed(2));
         const nG = Number((u.ganhos + ganho).toFixed(2));
+        
+        // Zera as bets apenas quando o sorteio acontece
         await User.findOneAndUpdate({ user: req.body.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
         res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG });
     } catch (e) { res.json({ success: false }); }
 });
 
+// --- ADMIN ---
+app.post('/admin/users', async (req, res) => {
+    const { senha } = req.body;
+    if (senha !== SENHA_ADMIN) return res.json({ success: false });
+    const users = await User.find({});
+    const saques = await Saque.find({ status: 'Pendente' });
+    res.json({ success: true, users, saques });
+});
+
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🔥 RODANDO"));
+app.listen(PORT, () => console.log("🚀 Servidor SlotReal Ativo"));
