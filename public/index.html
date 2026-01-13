@@ -3,58 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal - Premium Gold</title>
+    <title>SlotReal - Gmail Login</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
-        
-        /* Efeito de fundo luxo */
-        .money-bg {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-            z-index: -1;
-        }
-
-        .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
-        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
-        
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
+        .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; }
+        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; }
         .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
         input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
-
-        /* Timer com dinheiro ao redor */
-        .timer-container { position: relative; display: inline-block; margin: 20px 0; }
-        .money-float { position: absolute; font-size: 24px; animation: float 2s infinite ease-in-out; }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
-        /* Grid e Dinheiro no centro */
-        .game-container { position: relative; max-width: 360px; margin: auto; }
-        .money-center { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            width: 260px; opacity: 0.4; z-index: 1; pointer-events: none; 
-        }
-        .grid { 
-            display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; 
-            background: rgba(17,17,17,0.8); border-radius: 10px; position: relative; z-index: 2; 
-            backdrop-filter: blur(2px);
-        }
-
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; background: #111; border-radius: 10px; }
         .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; }
-        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; position: relative; z-index: 3; }
-        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; }
-        
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 20px; border-radius: 20px; width: 280px; z-index: 100; border: 1px solid #d4af37; }
         #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 99; backdrop-filter: blur(5px); }
+        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; }
+        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; }
     </style>
 </head>
 <body>
-
-    <div class="money-bg"></div>
 
     <div id="tela-login">
         <div class="card-auth">
             <h2 id="titulo-auth" style="color:#d4af37">LOGIN</h2>
             <div id="campo-email" style="display:none"><input type="email" id="email" placeholder="Seu Gmail (@gmail.com)"></div>
-            <input type="text" id="u" placeholder="Usuário">
+            <input type="text" id="u" placeholder="Nome de Usuário">
             <input type="password" id="p" placeholder="Senha">
             <button class="btn-g" id="btn-auth" onclick="auth()">ENTRAR</button>
             <p id="toggle-auth" onclick="alternarAuth()" style="color:#888; cursor:pointer; font-size:12px; margin-top:15px;">Novo aqui? <b>Criar conta com Gmail</b></p>
@@ -63,52 +33,41 @@
 
     <div id="tela-jogo" style="display:none">
         <div class="top-bar">
-            <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
+            <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #333;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <div>
-                <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
-                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SACAR</button>
+                <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px; border-radius:5px;">DEPOSITAR</button>
+                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px; border-radius:5px;">SACAR</button>
             </div>
         </div>
-
-        <div class="timer-container">
-            <span class="money-float" style="left:-40px; top:10px;">💵</span>
-            <h2 id="timer" style="color:#d4af37; font-size: 45px; margin:0;">02:00</h2>
-            <span class="money-float" style="right:-40px; top:10px;">💸</span>
-        </div>
-
-        <div class="game-container">
-            <img src="https://www.bcb.gov.br/content/cedulasemoedas/cedulassuspensas/PublishingImages/100_frente.jpg" class="money-center">
-            <div id="grid" class="grid"></div>
-        </div>
-
+        <h2 id="timer" style="color:#d4af37; font-size: 40px;">02:00</h2>
+        <div id="grid" class="grid"></div>
         <div id="bet-area" class="bet-area"></div>
     </div>
 
     <div id="overlay-bg"></div>
-    
-    <div id="resultado-modal" class="modal" style="text-align:center; z-index:1001;">
-        <div id="res-icon" style="font-size:60px;">💰</div>
+    <div id="resultado-modal" class="modal" style="text-align:center; z-index:1000;">
+        <div id="res-icon" style="font-size:50px;">💰</div>
         <h2 id="res-titulo">GANHOU!</h2>
-        <div id="res-valor" style="font-size:36px; margin:15px 0; color:#2ecc71; font-weight:bold;">R$ 0.00</div>
-        <button class="btn-g" onclick="fecharResultado()">RECEBER</button>
+        <div id="res-valor" style="font-size:30px; margin:10px 0; color:#2ecc71; font-weight:bold;">R$ 0.00</div>
+        <button class="btn-g" onclick="fecharResultado()">FECHAR</button>
     </div>
 
     <div id="m-saque" class="modal">
         <h3 style="color:#d4af37">Sacar Ganhos</h3>
-        <p style="font-size:11px; color:#aaa">Disponível para saque: <b id="g-display" style="color:#2ecc71">R$ 0.00</b></p>
+        <p style="font-size:10px; color:#aaa">Disponível: <b id="g-display" style="color:#2ecc71">R$ 0.00</b></p>
         <input type="text" id="ch-pix" placeholder="Chave PIX">
         <input type="number" id="v-saque" placeholder="Valor">
-        <button class="btn-g" onclick="sacar()">SOLICITAR PIX</button>
-        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Voltar</p>
+        <button class="btn-g" onclick="sacar()">SOLICITAR</button>
+        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Cancelar</p>
     </div>
 
     <div id="m-pix" class="modal">
-        <h3 style="color:#009ee3">Depósito Rápido</h3>
+        <h3 style="color:#009ee3">Depósito</h3>
         <input type="number" id="v-pix" value="20">
         <button class="btn-g" onclick="gerarPix()">GERAR QR CODE</button>
         <div id="res-pix" style="display:none; margin-top:10px;">
-            <img id="q-img" style="width:150px; background:white; padding:5px; border-radius:10px;">
-            <button class="btn-g" style="font-size:10px; margin-top:10px;" onclick="navigator.clipboard.writeText(state.pix_code); alert('Copiado!')">COPIAR CÓDIGO</button>
+            <img id="q-img" style="width:150px; background:white;">
+            <button class="btn-g" style="font-size:10px; margin-top:5px;" onclick="navigator.clipboard.writeText(state.pix_code); alert('Copiado!')">COPIAR PIX</button>
         </div>
         <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Sair</p>
     </div>
@@ -128,7 +87,7 @@
 
     async function auth() {
         const user = document.getElementById('u').value, pass = document.getElementById('p').value, email = document.getElementById('email').value;
-        if(!isLogin && (!email || !email.includes('@gmail.com'))) return alert("Use um Gmail válido!");
+        if(!isLogin && !email.includes('@gmail.com')) return alert("Use um Gmail válido!");
         const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user, pass, email}) });
         const d = await res.json();
         if(d.success) { state.u = d.user; state.s = d.saldo || 0; state.g = d.ganhos || 0; iniciar(); } else alert(d.message);
@@ -176,7 +135,7 @@
 
     function mostrarRes(v) {
         document.getElementById('res-icon').innerText = v > 0 ? "💰" : "❌";
-        document.getElementById('res-titulo').innerText = v > 0 ? "VITÓRIA!" : "NÃO FOI DESSA VEZ";
+        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
         document.getElementById('overlay-bg').style.display='block'; document.getElementById('resultado-modal').style.display='block';
     }
@@ -193,7 +152,7 @@
         const v = document.getElementById('v-saque').value, ch = document.getElementById('ch-pix').value;
         const res = await fetch('/solicitar-saque', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, valor:v, chavePix:ch}) });
         const d = await res.json();
-        if(d.success) { state.s = d.novoSaldo; state.g = d.novoGanhos; atualizar(); alert("Solicitação de saque enviada!"); fecharM(); } else alert(d.message);
+        if(d.success) { state.s = d.novoSaldo; state.g = d.novoGanhos; atualizar(); alert("Pedido enviado!"); fecharM(); } else alert(d.message);
     }
 
     function atualizar() { 
@@ -207,4 +166,4 @@
 </body>
 </html>
 
-Faça isso pra mim
+Fas logo
