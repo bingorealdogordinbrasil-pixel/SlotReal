@@ -7,10 +7,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// TOKEN E MONGO QUE VOCÊ JÁ USA
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA ON E MANIPULADO"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA RESTAURADO E ON"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -43,6 +44,7 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
+// SPIN MANIPULADO: SEMPRE CAI NO MENOS APOSTADO
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
@@ -62,27 +64,55 @@ app.post('/api/spin', async (req, res) => {
     } catch (e) { res.json({ success: false }); }
 });
 
+// ROTA DO QR CODE RESTAURADA (A QUE FUNCIONAVA)
 app.post('/gerar-pix', (req, res) => {
     const postData = JSON.stringify({
         transaction_amount: Number(req.body.valor),
         description: `Dep_${req.body.userLogado}`,
         payment_method_id: "pix",
-        payer: { email: `${req.body.userLogado}@gmail.com`, first_name: req.body.userLogado, last_name: "User", identification: { type: "CPF", number: "19119119100" } }
+        payer: { 
+            email: `${req.body.userLogado}@gmail.com`, 
+            first_name: req.body.userLogado, 
+            last_name: "User", 
+            identification: { type: "CPF", number: "19119119100" } 
+        }
     });
+
     const options = {
-        hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
-        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json' }
+        hostname: 'api.mercadopago.com', 
+        path: '/v1/payments', 
+        method: 'POST',
+        headers: { 
+            'Authorization': `Bearer ${MP_TOKEN}`, 
+            'Content-Type': 'application/json' 
+        }
     };
+
     const mpReq = https.request(options, (mpRes) => {
-        let b = ''; mpRes.on('data', d => b += d);
+        let b = ''; 
+        mpRes.on('data', d => b += d);
         mpRes.on('end', () => {
             try {
                 const r = JSON.parse(b);
-                res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code });
-            } catch(e) { res.json({ success: false }); }
+                // ESSA É A ESTRUTURA QUE O MERCADO PAGO ENVIA QUANDO DÁ CERTO
+                if (r.point_of_interaction && r.point_of_interaction.transaction_data) {
+                    res.json({ 
+                        success: true, 
+                        imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, 
+                        copia_e_cola: r.point_of_interaction.transaction_data.qr_code 
+                    });
+                } else {
+                    res.json({ success: false, message: "Erro no MP" });
+                }
+            } catch(e) { 
+                res.json({ success: false }); 
+            }
         });
     });
-    mpReq.write(postData); mpReq.end();
+    
+    mpReq.on('error', (err) => res.json({ success: false }));
+    mpReq.write(postData); 
+    mpReq.end();
 });
 
 app.listen(process.env.PORT || 10000);
