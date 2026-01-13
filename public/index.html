@@ -11,8 +11,20 @@
         .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
         .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
         input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
+        
         .timer-container { position: relative; display: inline-block; margin: 20px 0; }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(17,17,17,0.85); border-radius: 10px; border: 1px solid #d4af37; max-width: 340px; margin: auto; }
+        
+        /* DESTAQUE DO ANJO NO CENTRO */
+        .game-container { position: relative; max-width: 340px; margin: auto; }
+        .anjo-gold { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 80px; z-index: 1; opacity: 0.6; pointer-events: none;
+            filter: drop-shadow(0 0 15px #d4af37);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .anjo-gold span { font-size: 20px; color: #2ecc71; font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(17,17,17,0.8); border-radius: 10px; border: 1px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(2px); }
         .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; }
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; }
@@ -42,8 +54,17 @@
                 <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SACAR</button>
             </div>
         </div>
+
         <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:0;">02:00</h2></div>
-        <div id="grid" class="grid"></div>
+        
+        <div class="game-container">
+            <div class="anjo-gold">
+                👼
+                <span>$$$</span>
+            </div>
+            <div id="grid" class="grid"></div>
+        </div>
+
         <div id="bet-area" class="bet-area"></div>
     </div>
 
@@ -61,7 +82,7 @@
 
     <div id="m-saque" class="modal">
         <h3>Sacar</h3>
-        <p>Disponível: <b id="g-display" style="color:#2ecc71">0.00</b></p>
+        <p>Ganhos: <b id="g-display" style="color:#2ecc71">0.00</b></p>
         <input type="text" id="ch-pix" placeholder="Chave PIX">
         <input type="number" id="v-saque" placeholder="Valor">
         <button class="btn-g" onclick="sacar()">SOLICITAR</button>
@@ -93,7 +114,7 @@
         const d = await res.json();
         if(d.success) { 
             state.u = d.user; state.s = d.saldo; state.g = d.ganhos; 
-            state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; // PEGA A SELEÇÃO DO BANCO
+            state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; 
             iniciar(); 
         } else alert(d.message);
     }
@@ -109,7 +130,7 @@
         const area = document.getElementById('bet-area'); area.innerHTML = '';
         CORES.forEach((c, i) => {
             const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
-            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`; // ESCREVE A CUCA AQUI
+            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
             b.onclick = async () => { 
                 if(!bloqueado && state.s >= 1){ 
                     state.b[i]++; state.s--; atualizar(); 
@@ -153,10 +174,7 @@
         const v = document.getElementById('v-pix').value;
         const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:v}) });
         const d = await res.json();
-        if(d.success) { 
-            document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
-            state.pix_code = d.copia_e_cola; document.getElementById('res-pix').style.display='block'; 
-        }
+        if(d.success) { document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr; state.pix_code = d.copia_e_cola; document.getElementById('res-pix').style.display='block'; }
     }
 
     function copiarPix() { navigator.clipboard.writeText(state.pix_code); alert("Copiado!"); }
