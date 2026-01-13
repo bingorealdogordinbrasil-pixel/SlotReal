@@ -6,46 +6,57 @@
     <title>Gerente - SlotReal</title>
     <style>
         body { background: #050505; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; box-shadow: 0 0 15px rgba(212,175,55,0.2); }
-        input { padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; width: 200px; outline: none; }
-        input:focus { border-color: #d4af37; }
-        .btn { background: #d4af37; color: black; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.3s; }
-        .btn:hover { background: #fff; transform: scale(1.02); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #333; padding: 12px; text-align: center; }
-        th { color: #d4af37; background: #222; text-transform: uppercase; font-size: 12px; }
-        .bonus-section { border: 1px dashed #d4af37; padding: 15px; margin-bottom: 20px; border-radius: 10px; background: rgba(212,175,55,0.05); }
-        .saldo-v { color: #2ecc71; font-weight: bold; }
+        .container { max-width: 900px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; margin-bottom: 20px; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; width: 200px; }
+        .btn { background: #d4af37; color: black; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
+        th { color: #d4af37; background: #222; }
+        .bonus-section { border: 1px dashed #d4af37; padding: 15px; margin-bottom: 20px; border-radius: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="color:#d4af37">👑 PAINEL ADMINISTRATIVO</h2>
-    
-    <div style="margin-bottom: 20px;">
-        <input type="password" id="pass-admin" placeholder="Senha do Gerente">
-        <button class="btn" onclick="carregarLista()">ATUALIZAR LISTA</button>
-    </div>
+    <h2>👑 PAINEL ADMINISTRATIVO</h2>
+    <input type="password" id="pass-admin" placeholder="Senha do Gerente">
+    <button class="btn" onclick="carregarLista()">ATUALIZAR TUDO</button>
+</div>
 
+<div class="container" style="border-color: #e74c3c;">
+    <h3 style="color:#e74c3c; margin:0 0 10px 0;">💸 PEDIDOS DE SAQUE</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>USUÁRIO</th>
+                <th>VALOR</th>
+                <th>CHAVE PIX</th>
+                <th>AÇÃO</th>
+            </tr>
+        </thead>
+        <tbody id="saque-list">
+            <tr><td colspan="4">Carregue a lista...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
     <div class="bonus-section">
-        <h3>🎁 ADICIONAR BÔNUS</h3>
-        <input type="text" id="target-id" placeholder="ID do Usuário" readonly style="opacity:0.6">
+        <h3>🎁 DAR BÔNUS</h3>
+        <input type="text" id="target-id" placeholder="Usuário" readonly>
         <input type="number" id="bonus-val" placeholder="Valor R$">
-        <button class="btn" onclick="enviarBonus()" style="background:#2ecc71; color:white;">DAR BÔNUS</button>
+        <button class="btn" onclick="enviarBonus()" style="background:#2ecc71; color:white;">ENVIAR BÔNUS</button>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>USUÁRIO (ID)</th>
+                <th>USUÁRIO</th>
                 <th>SALDO (R$)</th>
                 <th>AÇÃO</th>
             </tr>
         </thead>
-        <tbody id="user-list">
-            <tr><td colspan="3">Clique em Atualizar para carregar...</td></tr>
-        </tbody>
+        <tbody id="user-list"></tbody>
     </table>
 </div>
 
@@ -63,44 +74,45 @@
             const data = await res.json();
 
             if (data.success) {
-                const tbody = document.getElementById('user-list');
-                tbody.innerHTML = '';
+                // Preenche Usuários
+                const tbodyU = document.getElementById('user-list');
+                tbodyU.innerHTML = '';
                 data.users.forEach(u => {
-                    tbody.innerHTML += `
+                    tbodyU.innerHTML += `<tr><td>${u.user}</td><td style="color:#2ecc71">R$ ${u.saldo.toFixed(2)}</td><td><button onclick="selecionar('${u.user}')">Selecionar</button></td></tr>`;
+                });
+
+                // Preenche Saques (Aqui está a mágica!)
+                const tbodyS = document.getElementById('saque-list');
+                tbodyS.innerHTML = data.saques.length ? '' : '<tr><td colspan="4">Nenhum saque pendente.</td></tr>';
+                data.saques.forEach(s => {
+                    tbodyS.innerHTML += `
                         <tr>
-                            <td>${u.user}</td>
-                            <td class="saldo-v">R$ ${u.saldo.toFixed(2)}</td>
-                            <td><button class="btn" style="padding:5px 10px; font-size:10px" onclick="selecionar('${u.user}')">SELECIONAR</button></td>
+                            <td>${s.user}</td>
+                            <td style="color:#e74c3c">R$ ${s.valor.toFixed(2)}</td>
+                            <td style="background:#000; font-family:monospace">${s.chavePix}</td>
+                            <td><button onclick="finalizarSaque('${s._id}')" style="background:#2ecc71; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer;">MARCAR PAGO</button></td>
                         </tr>`;
                 });
             } else { alert(data.message); }
         } catch (err) { alert("Erro de conexão!"); }
     }
 
-    function selecionar(id) {
-        document.getElementById('target-id').value = id;
-    }
+    function selecionar(id) { document.getElementById('target-id').value = id; }
 
     async function enviarBonus() {
         const senha = document.getElementById('pass-admin').value;
         const targetUser = document.getElementById('target-id').value;
         const valor = document.getElementById('bonus-val').value;
+        const res = await fetch('/admin/add-bonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha, targetUser, valor }) });
+        const d = await res.json();
+        if(d.success) { alert("Bônus enviado!"); carregarLista(); }
+    }
 
-        if(!targetUser || !valor) return alert("Selecione um Usuário e o Valor!");
-
-        try {
-            const res = await fetch('/admin/add-bonus', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ senha, targetUser, valor })
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert("Bônus enviado!");
-                document.getElementById('bonus-val').value = '';
-                carregarLista();
-            } else { alert(data.message); }
-        } catch (err) { alert("Erro!"); }
+    async function finalizarSaque(id) {
+        const senha = document.getElementById('pass-admin').value;
+        if(!confirm("Já pagou o PIX?")) return;
+        await fetch('/admin/finalizar-saque', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha, id }) });
+        carregarLista();
     }
 </script>
 </body>
