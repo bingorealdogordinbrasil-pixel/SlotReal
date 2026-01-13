@@ -12,7 +12,7 @@ const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa93
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "123456"; 
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA SLOTGOLD CONECTADO"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA CONECTADO"));
 
 // --- MODELOS ---
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
@@ -21,37 +21,69 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     pass: String,
     saldo: { type: Number, default: 0.00 },
     ganhos: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
+    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] } // Array das 10 cores
 }));
 
 const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Schema({
     user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
 }));
 
-// --- TIMER GLOBAL (120 SEGUNDOS) ---
+// --- TIMER GLOBAL (2 MINUTOS FIXOS) ---
 let t = 120;
-setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
+setInterval(() => { 
+    if(t > 0) t--; 
+    else t = 120; 
+}, 1000);
+
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
-// --- LOGIN (CARREGA AS APOSTAS PARA NÃO SUMIR NO F5) ---
+// --- LOGIN: RECUPERA AS APOSTAS ATUAIS DO BANCO ---
 app.post('/auth/login', async (req, res) => {
     try {
         const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-        if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
-        else res.json({ success: false, message: "Incorreto" });
+        if (c) {
+            // Enviamos as 'bets' de volta para o HTML saber o que já foi marcado
+            res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
+        } else {
+            res.json({ success: false, message: "Dados incorretos" });
+        }
     } catch (e) { res.json({ success: false }); }
 });
 
-// --- SALVA APOSTA IMEDIATAMENTE ---
+// --- SALVAR APOSTA: CHAME ISSO NO HTML SEMPRE QUE CLICAR NA COR ---
 app.post('/api/save-saldo', async (req, res) => {
     try {
         const { user, saldo, bets } = req.body;
+        // Atualiza o saldo e as cores marcadas no banco de dados
         await User.findOneAndUpdate({ user }, { saldo, bets });
         res.json({ success: true });
     } catch (e) { res.json({ success: false }); }
 });
 
-// --- QR CODE PIX (CORRIGIDO) ---
+// --- SPIN: SÓ AQUI O SORTEIO ACONTECE E AS CORES SÃO RESETADAS ---
+app.post('/api/spin', async (req, res) => {
+    try {
+        const u = await User.findOne({ user: req.body.user });
+        if(!u) return res.json({ success: false });
+
+        let menor = Math.min(...u.bets), cores = [];
+        u.bets.forEach((v, i) => { if(v === menor) cores.push(i); });
+        const alvo = cores[Math.floor(Math.random() * cores.length)];
+        const ganho = u.bets[alvo] * 5;
+        const nS = Number((u.saldo + ganho).toFixed(2));
+        const nG = Number((u.ganhos + ganho).toFixed(2));
+
+        // Zera as apostas (bets) apenas neste momento (fim dos 2 min)
+        await User.findOneAndUpdate(
+            { user: req.body.user }, 
+            { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] }
+        );
+
+        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG });
+    } catch (e) { res.json({ success: false }); }
+});
+
+// --- MERCADO PAGO QR CODE ---
 app.post('/gerar-pix', (req, res) => {
     const { valor, userLogado } = req.body;
     const cleanUser = String(userLogado || "user").replace(/[^a-zA-Z0-9]/g, '');
@@ -82,23 +114,6 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.write(postData); mpReq.end();
 });
 
-// --- SPIN (SÓ LIMPA AS BETS AQUI) ---
-app.post('/api/spin', async (req, res) => {
-    try {
-        const u = await User.findOne({ user: req.body.user });
-        let menor = Math.min(...u.bets), cores = [];
-        u.bets.forEach((v, i) => { if(v === menor) cores.push(i); });
-        const alvo = cores[Math.floor(Math.random() * cores.length)];
-        const ganho = u.bets[alvo] * 5;
-        const nS = Number((u.saldo + ganho).toFixed(2));
-        const nG = Number((u.ganhos + ganho).toFixed(2));
-        
-        // Zera as bets apenas quando o sorteio acontece
-        await User.findOneAndUpdate({ user: req.body.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
-        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG });
-    } catch (e) { res.json({ success: false }); }
-});
-
 // --- ADMIN ---
 app.post('/admin/users', async (req, res) => {
     const { senha } = req.body;
@@ -109,4 +124,4 @@ app.post('/admin/users', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Servidor SlotReal Ativo"));
+app.listen(PORT, () => console.log("🚀 Servidor SlotReal Rodando"));
