@@ -12,18 +12,19 @@
         .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
         input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
         
+        /* DESTAQUE CENTRAL */
         .game-container { position: relative; max-width: 340px; margin: 20px auto; }
         .centro-gold { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; pointer-events: none; }
         .money-bag { font-size: 100px; filter: drop-shadow(0 0 25px #d4af37); animation: pulse 1.5s infinite ease-in-out; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.75); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(4px); }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.7); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(4px); }
         .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; }
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
-        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
-        
-        /* MODAL DE RESULTADO NA FRENTE */
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 30px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; box-shadow: 0 0 50px #000; }
+        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color: #fff; }
+
+        /* MODAIS */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
         #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; backdrop-filter: blur(8px); }
     </style>
 </head>
@@ -46,9 +47,10 @@
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <div>
                 <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
+                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SACAR</button>
             </div>
         </div>
-        <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">02:00</h2></div>
+        <h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">02:00</h2>
         
         <div class="game-container">
             <div class="centro-gold"><div class="money-bag">💰</div></div>
@@ -61,20 +63,26 @@
     
     <div id="res-modal" class="modal">
         <div id="res-icon" style="font-size:70px;">💰</div>
-        <h2 id="res-titulo" style="margin:10px 0;">GANHOU!</h2>
-        <div id="res-valor" style="font-size:40px; color:#2ecc71; font-weight:bold; margin-bottom:20px;">R$ 0.00</div>
+        <h2 id="res-titulo">GANHOU!</h2>
+        <div id="res-valor" style="font-size:38px; color:#2ecc71; font-weight:bold; margin:15px 0;">R$ 0.00</div>
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
     </div>
 
-    <div id="m-pix" class="modal" style="display:none">
+    <div id="m-pix" class="modal">
         <h3>Depósito PIX</h3>
         <input type="number" id="v-pix" value="20">
         <button class="btn-g" onclick="gerarPix()">GERAR QR CODE</button>
-        <div id="res-pix" style="display:none; margin-top:10px;">
-            <img id="q-img" style="width:160px; background:white; padding:5px; border-radius:5px;">
-            <button class="btn-g" style="font-size:10px; margin-top:5px;" onclick="alert('Copiado!')">COPIAR PIX</button>
-        </div>
-        <p onclick="fecharM()" style="color:red; cursor:pointer; margin-top:15px;">Voltar</p>
+        <div id="res-pix" style="display:none; margin-top:10px;"><img id="q-img" style="width:160px; background:white; padding:5px;"><br><button class="btn-g" onclick="alert('Copiado!')">COPIAR PIX</button></div>
+        <p onclick="fecharM()" style="color:red; cursor:pointer;">Voltar</p>
+    </div>
+
+    <div id="m-saque" class="modal">
+        <h3>Sacar</h3>
+        <p>Ganhos: <b id="g-display">0.00</b></p>
+        <input type="text" id="ch-pix" placeholder="Chave PIX">
+        <input type="number" id="v-saque" placeholder="Valor">
+        <button class="btn-g" onclick="sacar()">SOLICITAR</button>
+        <p onclick="fecharM()" style="color:red; cursor:pointer;">Cancelar</p>
     </div>
 
 <script>
@@ -125,10 +133,8 @@
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
-        
         let target = -1; for(let i=0; i<MAP.length; i++) if(i%10 === d.corAlvo) { target = i; break; }
         let total = (MAP.length * 2) + target, count = 0;
-        
         const loop = () => {
             document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
             state.idx = (state.idx + 1) % MAP.length;
@@ -136,32 +142,33 @@
             if(++count < total) setTimeout(loop, 40);
             else { 
                 mostrarFim(d.valorGanho);
-                state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false; 
+                state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; 
             }
         }; loop();
     }
 
     function mostrarFim(v) {
-        const m = document.getElementById('res-modal');
         document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
         document.getElementById('res-titulo').style.color = v > 0 ? "#2ecc71" : "#e74c3c";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
         document.getElementById('res-icon').innerText = v > 0 ? "💰" : "❌";
         document.getElementById('overlay-bg').style.display = 'block';
-        m.style.display = 'block';
+        document.getElementById('res-modal').style.display = 'block';
     }
 
     function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
     function atualizar() { 
         document.getElementById('s-display').innerText = state.s.toFixed(2);
+        document.getElementById('g-display').innerText = state.g.toFixed(2);
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
+    
     async function gerarPix() { 
-        const v = document.getElementById('v-pix').value;
-        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:v}) });
+        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
         const d = await res.json();
         document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr; document.getElementById('res-pix').style.display='block';
     }
+    
     function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
     function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
 </script>
