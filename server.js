@@ -10,10 +10,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- CONFIGURAÇÃO ---
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
+const SENHA_ADMIN = "123456"; // Altera para a tua senha segura
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO DE DADOS CONECTADO"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ BD CONECTADA"));
 
-// MODELOS
 const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
@@ -21,108 +21,49 @@ const User = mongoose.model('User', new mongoose.Schema({
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-const Saque = mongoose.model('Saque', new mongoose.Schema({
-    user: String,
-    valor: Number,
-    chavePix: String,
-    status: { type: String, default: 'Pendente' },
-    data: { type: Date, default: Date.now }
-}));
+// --- ROTAS DO PAINEL ADMINISTRATIVO ---
 
-// --- ROTA: GERAR PIX ---
+app.post('/admin/users', async (req, res) => {
+    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false, message: "Senha Inválida" });
+    try {
+        const users = await User.find({}, 'user saldo').sort({ saldo: -1 });
+        res.json({ success: true, users });
+    } catch (e) { res.json({ success: false }); }
+});
+
+app.post('/admin/add-bonus', async (req, res) => {
+    const { senha, targetUser, valor } = req.body;
+    if (senha !== SENHA_ADMIN) return res.json({ success: false, message: "Senha Inválida" });
+    try {
+        await User.findOneAndUpdate({ user: targetUser }, { $inc: { saldo: Number(valor) } });
+        res.json({ success: true });
+    } catch (e) { res.json({ success: false }); }
+});
+
+// --- ROTA PIX E JOGO (RESUMIDAS) ---
 app.post('/gerar-pix', (req, res) => {
     const { valor, userLogado } = req.body;
-    const emailLimpo = userLogado.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() + "@gmail.com";
-
     const data = JSON.stringify({
         transaction_amount: Number(valor),
         description: `Deposito Slot - ${userLogado}`,
         payment_method_id: "pix",
-        notification_url: "https://SEU-SITE-AQUI.onrender.com/webhook", // <--- MUDE PARA O SEU LINK DO RENDER
-        payer: { email: emailLimpo }
+        payer: { email: `${userLogado.replace(/\s/g, '')}@gmail.com` }
     });
-
     const options = {
-        hostname: 'api.mercadopago.com',
-        path: '/v1/payments',
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${MP_TOKEN}`,
-            'Content-Type': 'application/json',
-            'X-Idempotency-Key': Date.now().toString()
-        }
+        hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
+        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': Date.now().toString() }
     };
-
     const mpReq = https.request(options, (mpRes) => {
-        let body = '';
-        mpRes.on('data', (chunk) => body += chunk);
+        let b = ''; mpRes.on('data', d => b += d);
         mpRes.on('end', () => {
-            const d = JSON.parse(body);
-            if (d.point_of_interaction) {
-                res.json({
-                    success: true,
-                    imagem_qr: d.point_of_interaction.transaction_data.qr_code_base64,
-                    copia_e_cola: d.point_of_interaction.transaction_data.qr_code
-                });
-            } else { res.json({ success: false, message: d.message }); }
+            const r = JSON.parse(b);
+            if (r.point_of_interaction) res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code });
+            else res.json({ success: false });
         });
     });
-    mpReq.write(data);
-    mpReq.end();
+    mpReq.write(data); mpReq.end();
 });
 
-// --- WEBHOOK: RECEBE AVISO DE PAGAMENTO ---
-app.post('/webhook', async (req, res) => {
-    res.sendStatus(200); // Avisa o MP que recebeu o aviso
-    const { action, data } = req.body;
-
-    if (action === "payment.created" || action === "payment.updated") {
-        const paymentId = data.id;
-
-        // Consulta se o pagamento foi aprovado
-        https.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-            headers: { 'Authorization': `Bearer ${MP_TOKEN}` }
-        }, (resMp) => {
-            let body = '';
-            resMp.on('data', (chunk) => body += chunk);
-            resMp.on('end', async () => {
-                const p = JSON.parse(body);
-                if (p.status === 'approved') {
-                    const valorPago = p.transaction_amount;
-                    const nomeUsuario = p.description.replace("Deposito Slot - ", "");
-                    
-                    // Adiciona o saldo ao usuário
-                    await User.findOneAndUpdate({ user: nomeUsuario }, { $inc: { saldo: valorPago } });
-                    console.log(`✅ SALDO ADICIONADO: R$ ${valorPago} para ${nomeUsuario}`);
-                }
-            });
-        });
-    }
-});
-
-// --- ROTA: SOLICITAR SAQUE ---
-app.post('/solicitar-saque', async (req, res) => {
-    const { user, valor, chavePix } = req.body;
-    const conta = await User.findOne({ user: user });
-
-    if (conta && conta.saldo >= Number(valor)) {
-        const novoSaldo = Number((conta.saldo - Number(valor)).toFixed(2));
-        await User.findOneAndUpdate({ user: user }, { saldo: novoSaldo });
-        await Saque.create({ user, valor: Number(valor), chavePix });
-        res.json({ success: true, novoSaldo });
-    } else {
-        res.json({ success: false, message: "Saldo insuficiente!" });
-    }
-});
-
-// --- PAINEL DO GERENTE ---
-app.get('/painel-gerente', async (req, res) => {
-    const pendentes = await Saque.find({ status: 'Pendente' });
-    let lista = pendentes.map(p => `<li><b>${p.user}</b> pediu R$ ${p.valor} (PIX: ${p.chavePix})</li>`).join("");
-    res.send(`<h2>Saques Pendentes</h2><ul>${lista}</ul>`);
-});
-
-// ROTAS PADRÃO
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, saldo: c.saldo, user: c.user, bets: c.bets });
@@ -144,8 +85,7 @@ app.post('/api/spin', async (req, res) => {
     res.json({ success: true, corAlvo: alvo, novoSaldo: novo });
 });
 
-let tempo = 120;
-setInterval(() => { if(tempo > 0) tempo--; else tempo = 120; }, 1000);
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempo }));
+let t = 120; setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
+app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
-app.listen(10000, () => console.log("🚀 SISTEMA COMPLETO ONLINE"));
+app.listen(10000, () => console.log("🚀 ADMIN & JOGO ONLINE"));
