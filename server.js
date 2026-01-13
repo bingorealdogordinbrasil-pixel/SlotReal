@@ -1,118 +1,222 @@
-const express = require('express');
-const path = require('path');
-const mongoose = require('mongoose');
-const https = require('https');
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SlotReal - Premium Gold</title>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
+        
+        /* FUNDO TEXTURA DE DINHEIRO */
+        .money-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #051a05;
+            background-image: radial-gradient(#114411 1px, transparent 1px);
+            background-size: 25px 25px;
+            z-index: -1;
+        }
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+        .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
+        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
+        
+        .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
+        input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
 
-// --- CONFIGURAÇÃO ---
-const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
-const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-const SENHA_ADMIN = "123456"; 
+        /* TIMER COM DINHEIRO */
+        .timer-container { position: relative; display: inline-block; margin: 20px 0; }
+        .money-float { position: absolute; font-size: 30px; animation: float 2s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ BANCO CONECTADO"));
+        /* GRID COM DINHEIRO NO CENTRO */
+        .game-container { position: relative; max-width: 360px; margin: auto; }
+        .decoracao-dinheiro-centro { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 100px; opacity: 0.3; z-index: 1; pointer-events: none;
+            display: flex; flex-direction: column; line-height: 0.8;
+        }
 
-// MODELO DE USUÁRIO
-const User = mongoose.model('User', new mongoose.Schema({
-    user: { type: String, unique: true },
-    pass: String,
-    saldo: { type: Number, default: 0.00 },
-    ganhos: { type: Number, default: 0.00 }, // SÓ PODE SACAR ISSO
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
-}));
+        .grid { 
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; 
+            background: rgba(17,17,17,0.85); border-radius: 10px; position: relative; z-index: 2; 
+            backdrop-filter: blur(3px); border: 1px solid #d4af37;
+        }
 
-const Saque = mongoose.model('Saque', new mongoose.Schema({
-    user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
-}));
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; }
+        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; position: relative; z-index: 3; }
+        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; }
+        
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 20px; border-radius: 20px; width: 280px; z-index: 100; border: 1px solid #d4af37; }
+        #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 99; backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
 
-// --- AUTENTICAÇÃO ---
-app.post('/auth/register', async (req, res) => {
-    try {
-        const { user, pass } = req.body;
-        if (!user || !pass) return res.json({ success: false, message: "Preencha tudo" });
-        const exists = await User.findOne({ user });
-        if (exists) return res.json({ success: false, message: "Usuário já existe" });
-        const novo = await User.create({ user, pass });
-        res.json({ success: true, user: novo.user });
-    } catch (e) { res.json({ success: false, message: "Erro no cadastro" }); }
-});
+    <div class="money-bg"></div>
 
-app.post('/auth/login', async (req, res) => {
-    const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-    if (c) res.json({ success: true, saldo: c.saldo, ganhos: c.ganhos, user: c.user, bets: c.bets });
-    else res.json({ success: false, message: "Login inválido" });
-});
+    <div id="tela-login">
+        <div class="card-auth">
+            <h2 id="titulo-auth" style="color:#d4af37">LOGIN GOLD</h2>
+            <div id="campo-email" style="display:none"><input type="email" id="email" placeholder="Seu Gmail (@gmail.com)"></div>
+            <input type="text" id="u" placeholder="Usuário">
+            <input type="password" id="p" placeholder="Senha">
+            <button class="btn-g" id="btn-auth" onclick="auth()">ENTRAR</button>
+            <p id="toggle-auth" onclick="alternarAuth()" style="color:#888; cursor:pointer; font-size:12px; margin-top:15px;">Novo? <b>Criar conta</b></p>
+        </div>
+    </div>
 
-// --- JOGO ---
-app.post('/api/spin', async (req, res) => {
-    try {
-        const u = await User.findOne({ user: req.body.user });
-        let menor = Math.min(...u.bets), cores = [];
-        u.bets.forEach((v, i) => { if(v === menor) cores.push(i); });
-        const alvo = cores[Math.floor(Math.random() * cores.length)];
-        const ganho = u.bets[alvo] * 5;
-        const nS = Number((u.saldo + ganho).toFixed(2));
-        const nG = Number((u.ganhos + ganho).toFixed(2));
-        await User.findOneAndUpdate({ user: req.body.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
-        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG });
-    } catch (e) { res.json({ success: false }); }
-});
+    <div id="tela-jogo" style="display:none">
+        <div class="top-bar">
+            <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
+            <div>
+                <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
+                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SACAR</button>
+            </div>
+        </div>
 
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
-    res.json({ success: true });
-});
+        <div class="timer-container">
+            <span class="money-float" style="left:-50px; top:5px;">💵</span>
+            <h2 id="timer" style="color:#d4af37; font-size: 45px; margin:0;">02:00</h2>
+            <span class="money-float" style="right:-50px; top:5px;">💸</span>
+        </div>
 
-// --- DINHEIRO ---
-app.post('/solicitar-saque', async (req, res) => {
-    const { user, valor, chavePix } = req.body;
-    const u = await User.findOne({ user });
-    if (u && u.ganhos >= valor && u.saldo >= valor) {
-        const nS = Number((u.saldo - valor).toFixed(2));
-        const nG = Number((u.ganhos - valor).toFixed(2));
-        await User.findOneAndUpdate({ user }, { saldo: nS, ganhos: nG });
-        await Saque.create({ user, valor, chavePix });
-        res.json({ success: true, novoSaldo: nS, novoGanhos: nG });
-    } else {
-        res.json({ success: false, message: "Saldo de ganhos insuficiente!" });
+        <div class="game-container">
+            <div class="decoracao-dinheiro-centro"><span>💰</span><span>💸</span></div>
+            <div id="grid" class="grid"></div>
+        </div>
+
+        <div id="bet-area" class="bet-area"></div>
+    </div>
+
+    <div id="overlay-bg"></div>
+    
+    <div id="m-pix" class="modal">
+        <h3 style="color:#009ee3">Depósito PIX</h3>
+        <input type="number" id="v-pix" value="20" style="text-align:center;">
+        <button class="btn-g" onclick="gerarPix()">GERAR QR CODE</button>
+        <div id="res-pix" style="display:none; margin-top:10px; text-align:center;">
+            <div style="background:white; padding:10px; border-radius:10px; display:inline-block;">
+                <img id="q-img" style="width:160px; display:block;">
+            </div>
+            <button class="btn-g" style="font-size:10px; margin-top:10px;" onclick="copiarPix()">COPIAR PIX</button>
+        </div>
+        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Voltar</p>
+    </div>
+
+    <div id="m-saque" class="modal">
+        <h3 style="color:#d4af37">Sacar</h3>
+        <p style="font-size:11px;">Disponível: <b id="g-display" style="color:#2ecc71">R$ 0.00</b></p>
+        <input type="text" id="ch-pix" placeholder="Chave PIX">
+        <input type="number" id="v-saque" placeholder="Valor">
+        <button class="btn-g" onclick="sacar()">SOLICITAR</button>
+        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Cancelar</p>
+    </div>
+
+    <div id="resultado-modal" class="modal">
+        <div id="res-icon" style="font-size:60px;">💰</div>
+        <h2 id="res-titulo">GANHOU!</h2>
+        <div id="res-valor" style="font-size:36px; color:#2ecc71; font-weight:bold;">R$ 0.00</div>
+        <button class="btn-g" onclick="fecharResultado()">FECHAR</button>
+    </div>
+
+<script>
+    let isLogin = true, bloqueado = false;
+    let state = { u: '', s: 0, g: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0, pix_code: '' };
+    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
+    const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
+
+    function alternarAuth() {
+        isLogin = !isLogin;
+        document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD";
+        document.getElementById('campo-email').style.display = isLogin ? "none" : "block";
+        document.getElementById('toggle-auth').innerHTML = isLogin ? "Novo? <b>Criar conta</b>" : "Já tem conta? <b>Login</b>";
     }
-});
 
-app.post('/gerar-pix', (req, res) => {
-    const { valor, userLogado } = req.body;
-    const data = JSON.stringify({
-        transaction_amount: Number(valor), description: `Dep: ${userLogado}`, payment_method_id: "pix",
-        payer: { email: `${userLogado}@gmail.com` }
-    });
-    const options = {
-        hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
-        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': 'k'+Date.now() }
-    };
-    const mpReq = https.request(options, (mpRes) => {
-        let b = ''; mpRes.on('data', d => b += d);
-        mpRes.on('end', () => {
-            try {
-                const r = JSON.parse(b);
-                if (r.point_of_interaction) res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code });
-                else res.json({ success: false });
-            } catch(e) { res.json({ success: false }); }
+    async function auth() {
+        const user = document.getElementById('u').value, pass = document.getElementById('p').value, email = document.getElementById('email').value;
+        if(!isLogin && (!email || !email.includes('@gmail.com'))) return alert("Use um Gmail!");
+        const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user, pass, email}) });
+        const d = await res.json();
+        if(d.success) { state.u = d.user; state.s = d.saldo; state.g = d.ganhos; iniciar(); } else alert(d.message);
+    }
+
+    function iniciar() {
+        document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
+        const g = document.getElementById('grid'); g.innerHTML = '';
+        for(let i=0; i<64; i++){
+            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
+            const p = MAP.indexOf(i); if(p !== -1) { c.style.background = CORES[p%10]; c.innerText = 'R$5'; } else c.style.opacity = '0.05';
+            g.appendChild(c);
+        }
+        const area = document.getElementById('bet-area'); area.innerHTML = '';
+        CORES.forEach((c, i) => {
+            const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
+            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
+            b.onclick = async () => { if(!bloqueado && state.s >= 1){ state.b[i]++; state.s--; atualizar(); await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); } };
+            area.appendChild(b);
         });
-    });
-    mpReq.write(data); mpReq.end();
-});
+        atualizar(); setInterval(sync, 1000);
+    }
 
-// --- ADMIN E TEMPO ---
-app.post('/admin/users', async (req, res) => {
-    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    const users = await User.find({}, 'user saldo ganhos').sort({ saldo: -1 });
-    const saques = await Saque.find({ status: 'Pendente' });
-    res.json({ success: true, users, saques });
-});
+    async function sync() {
+        const res = await fetch('/api/tempo-real'); const d = await res.json();
+        document.getElementById('timer').innerText = `${Math.floor(d.segundos/60)}:${(d.segundos%60).toString().padStart(2,'0')}`;
+        if(d.segundos === 0 && !bloqueado) rodar();
+    }
 
-let t = 120; setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
+    async function rodar() {
+        bloqueado = true;
+        const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
+        const d = await res.json();
+        let ganho = Number((d.novoSaldo - state.s).toFixed(2));
+        let target = -1; for(let i=0; i<MAP.length; i++) if(i%10 === d.corAlvo) { target = i; break; }
+        let total = (MAP.length * 2) + target, count = 0;
+        const loop = () => {
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
+            state.idx = (state.idx + 1) % MAP.length;
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 15px #fff';
+            if(++count < total) setTimeout(loop, 40);
+            else { mostrarRes(ganho); state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; }
+        }; loop();
+    }
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("Servidor Online na porta " + PORT));
+    function mostrarRes(v) {
+        document.getElementById('res-icon').innerText = v > 0 ? "💰" : "❌";
+        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
+        document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
+        document.getElementById('overlay-bg').style.display='block'; document.getElementById('resultado-modal').style.display='block';
+    }
+
+    function fecharResultado() { document.getElementById('resultado-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
+
+    async function gerarPix() {
+        const v = document.getElementById('v-pix').value;
+        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:v}) });
+        const d = await res.json();
+        if(d.success) { 
+            document.getElementById('q-img').src = d.imagem_qr.startsWith('data:') ? d.imagem_qr : "data:image/png;base64," + d.imagem_qr;
+            state.pix_code = d.copia_e_cola; 
+            document.getElementById('res-pix').style.display='block'; 
+        }
+    }
+
+    function copiarPix() { navigator.clipboard.writeText(state.pix_code); alert("PIX Copiado!"); }
+
+    async function sacar() {
+        const v = document.getElementById('v-saque').value, ch = document.getElementById('ch-pix').value;
+        const res = await fetch('/solicitar-saque', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, valor:v, chavePix:ch}) });
+        const d = await res.json();
+        if(d.success) { state.s = d.novoSaldo; state.g = d.novoGanhos; atualizar(); alert("Sucesso!"); fecharM(); } else alert(d.message);
+    }
+
+    function atualizar() { 
+        document.getElementById('s-display').innerText = state.s.toFixed(2);
+        document.getElementById('g-display').innerText = `R$ ${state.g.toFixed(2)}`;
+        state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
+    }
+    function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
+    function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
+</script>
+</body>
+</html>
+            
