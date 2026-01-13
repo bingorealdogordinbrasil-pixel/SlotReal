@@ -6,20 +6,22 @@
     <title>Gerente - SlotReal</title>
     <style>
         body { background: #050505; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; }
-        input { padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; width: 200px; }
-        .btn { background: #d4af37; color: black; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
-        .btn:hover { background: #fff; }
+        .container { max-width: 800px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; box-shadow: 0 0 15px rgba(212,175,55,0.2); }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; width: 200px; outline: none; }
+        input:focus { border-color: #d4af37; }
+        .btn { background: #d4af37; color: black; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.3s; }
+        .btn:hover { background: #fff; transform: scale(1.02); }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
-        th { color: #d4af37; background: #222; }
-        .bonus-section { border: 1px dashed #d4af37; padding: 15px; margin-bottom: 20px; border-radius: 10px; }
+        th, td { border: 1px solid #333; padding: 12px; text-align: center; }
+        th { color: #d4af37; background: #222; text-transform: uppercase; font-size: 12px; }
+        .bonus-section { border: 1px dashed #d4af37; padding: 15px; margin-bottom: 20px; border-radius: 10px; background: rgba(212,175,55,0.05); }
+        .saldo-v { color: #2ecc71; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>👑 PAINEL ADMINISTRATIVO</h2>
+    <h2 style="color:#d4af37">👑 PAINEL ADMINISTRATIVO</h2>
     
     <div style="margin-bottom: 20px;">
         <input type="password" id="pass-admin" placeholder="Senha do Gerente">
@@ -27,8 +29,8 @@
     </div>
 
     <div class="bonus-section">
-        <h3>ADICIONAR BÔNUS (ID)</h3>
-        <input type="text" id="target-id" placeholder="ID do Usuário">
+        <h3>🎁 ADICIONAR BÔNUS</h3>
+        <input type="text" id="target-id" placeholder="ID do Usuário" readonly style="opacity:0.6">
         <input type="number" id="bonus-val" placeholder="Valor R$">
         <button class="btn" onclick="enviarBonus()" style="background:#2ecc71; color:white;">DAR BÔNUS</button>
     </div>
@@ -37,19 +39,17 @@
         <thead>
             <tr>
                 <th>USUÁRIO (ID)</th>
-                <th>WHATSAPP</th>
                 <th>SALDO (R$)</th>
                 <th>AÇÃO</th>
             </tr>
         </thead>
         <tbody id="user-list">
-            <tr><td colspan="4">Clique em Atualizar para carregar...</td></tr>
+            <tr><td colspan="3">Clique em Atualizar para carregar...</td></tr>
         </tbody>
     </table>
 </div>
 
 <script>
-    // FUNÇÃO PARA CARREGAR USUÁRIOS
     async function carregarLista() {
         const senha = document.getElementById('pass-admin').value;
         if(!senha) return alert("Digite a senha!");
@@ -58,7 +58,7 @@
             const res = await fetch('/admin/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ senha: senha })
+                body: JSON.stringify({ senha })
             });
             const data = await res.json();
 
@@ -69,31 +69,24 @@
                     tbody.innerHTML += `
                         <tr>
                             <td>${u.user}</td>
-                            <td>${u.fone || '-'}</td>
-                            <td style="font-weight:bold; color:#2ecc71;">R$ ${u.saldo.toFixed(2)}</td>
-                            <td><button onclick="selecionar('${u.user}')" style="cursor:pointer">Selecionar</button></td>
+                            <td class="saldo-v">R$ ${u.saldo.toFixed(2)}</td>
+                            <td><button class="btn" style="padding:5px 10px; font-size:10px" onclick="selecionar('${u.user}')">SELECIONAR</button></td>
                         </tr>`;
                 });
-            } else {
-                alert(data.message || "Erro ao acessar!");
-            }
-        } catch (err) {
-            alert("Erro de conexão com o servidor!");
-        }
+            } else { alert(data.message); }
+        } catch (err) { alert("Erro de conexão!"); }
     }
 
-    // SELECIONA O NOME DA TABELA E JOGA PRO CAMPO DE BÔNUS
     function selecionar(id) {
         document.getElementById('target-id').value = id;
     }
 
-    // FUNÇÃO PARA DAR BÔNUS
     async function enviarBonus() {
         const senha = document.getElementById('pass-admin').value;
         const targetUser = document.getElementById('target-id').value;
         const valor = document.getElementById('bonus-val').value;
 
-        if(!targetUser || !valor) return alert("Preencha o ID e o Valor!");
+        if(!targetUser || !valor) return alert("Selecione um Usuário e o Valor!");
 
         try {
             const res = await fetch('/admin/add-bonus', {
@@ -102,19 +95,13 @@
                 body: JSON.stringify({ senha, targetUser, valor })
             });
             const data = await res.json();
-
             if (data.success) {
-                alert("Bônus enviado com sucesso!");
+                alert("Bônus enviado!");
                 document.getElementById('bonus-val').value = '';
-                carregarLista(); // Atualiza a tabela
-            } else {
-                alert(data.message || "Erro ao dar bônus");
-            }
-        } catch (err) {
-            alert("Erro de conexão!");
-        }
+                carregarLista();
+            } else { alert(data.message); }
+        } catch (err) { alert("Erro!"); }
     }
 </script>
 </body>
 </html>
-
