@@ -7,7 +7,7 @@
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
         
-        /* 1. FUNDO COM EFEITO DE DINHEIRO (TEXTURA DE NOTA) */
+        /* FUNDO TEXTURA DE DINHEIRO */
         .money-bg {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -23,14 +23,13 @@
         .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
         input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
 
-        /* 2. TIMER COM DINHEIRO AO REDOR */
+        /* TIMER COM NOTAS FLUTUANTES */
         .timer-container { position: relative; display: inline-block; margin: 20px 0; }
         .money-float { position: absolute; font-size: 30px; animation: float 2s infinite ease-in-out; }
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
 
-        /* 3. GRID COM DINHEIRO NO CENTRO (O BAGULHO QUE VOCÊ PEDIU) */
+        /* GRID COM DINHEIRO NO CENTRO */
         .game-container { position: relative; max-width: 360px; margin: auto; }
-        
         .decoracao-dinheiro-centro { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             font-size: 100px; opacity: 0.3; z-index: 1; pointer-events: none;
@@ -61,8 +60,8 @@
             <div id="campo-email" style="display:none"><input type="email" id="email" placeholder="Seu Gmail (@gmail.com)"></div>
             <input type="text" id="u" placeholder="Usuário">
             <input type="password" id="p" placeholder="Senha">
-            <button class="btn-g" id="btn-auth" onclick="auth()">ENTRAR AGORA</button>
-            <p id="toggle-auth" onclick="alternarAuth()" style="color:#888; cursor:pointer; font-size:12px; margin-top:15px;">Novo? <b>Crie conta com Gmail</b></p>
+            <button class="btn-g" id="btn-auth" onclick="auth()">ENTRAR</button>
+            <p id="toggle-auth" onclick="alternarAuth()" style="color:#888; cursor:pointer; font-size:12px; margin-top:15px;">Novo? <b>Criar conta</b></p>
         </div>
     </div>
 
@@ -77,15 +76,12 @@
 
         <div class="timer-container">
             <span class="money-float" style="left:-50px; top:5px;">💵</span>
-            <h2 id="timer" style="color:#d4af37; font-size: 45px; margin:0; letter-spacing: 2px;">02:00</h2>
+            <h2 id="timer" style="color:#d4af37; font-size: 45px; margin:0;">02:00</h2>
             <span class="money-float" style="right:-50px; top:5px;">💸</span>
         </div>
 
         <div class="game-container">
-            <div class="decoracao-dinheiro-centro">
-                <span>💰</span>
-                <span>💸</span>
-            </div>
+            <div class="decoracao-dinheiro-centro"><span>💰</span><span>💸</span></div>
             <div id="grid" class="grid"></div>
         </div>
 
@@ -94,31 +90,31 @@
 
     <div id="overlay-bg"></div>
     
-    <div id="resultado-modal" class="modal" style="text-align:center; z-index:1001;">
+    <div id="resultado-modal" class="modal" style="text-align:center;">
         <div id="res-icon" style="font-size:60px;">💰</div>
         <h2 id="res-titulo">GANHOU!</h2>
         <div id="res-valor" style="font-size:36px; margin:15px 0; color:#2ecc71; font-weight:bold;">R$ 0.00</div>
-        <button class="btn-g" onclick="fecharResultado()">COLETAR DINHEIRO</button>
+        <button class="btn-g" onclick="fecharResultado()">RECEBER</button>
     </div>
 
     <div id="m-saque" class="modal">
-        <h3 style="color:#d4af37">Solicitar Saque</h3>
-        <p style="font-size:11px; color:#aaa">Saldo em Ganhos: <b id="g-display" style="color:#2ecc71">R$ 0.00</b></p>
+        <h3 style="color:#d4af37">Sacar Ganhos</h3>
+        <p style="font-size:11px;">Disponível: <b id="g-display" style="color:#2ecc71">R$ 0.00</b></p>
         <input type="text" id="ch-pix" placeholder="Chave PIX">
-        <input type="number" id="v-saque" placeholder="Valor do Saque">
-        <button class="btn-g" onclick="sacar()">ENVIAR PARA PIX</button>
-        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Fechar</p>
+        <input type="number" id="v-saque" placeholder="Valor">
+        <button class="btn-g" onclick="sacar()">SOLICITAR PIX</button>
+        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Voltar</p>
     </div>
 
     <div id="m-pix" class="modal">
-        <h3 style="color:#009ee3">Adicionar Saldo</h3>
+        <h3 style="color:#009ee3">Depósito</h3>
         <input type="number" id="v-pix" value="20">
-        <button class="btn-g" onclick="gerarPix()">GERAR PIX</button>
+        <button class="btn-g" onclick="gerarPix()">GERAR QR CODE</button>
         <div id="res-pix" style="display:none; margin-top:10px;">
             <img id="q-img" style="width:150px; background:white; padding:5px; border-radius:10px;">
-            <button class="btn-g" style="font-size:10px; margin-top:10px;" onclick="navigator.clipboard.writeText(state.pix_code); alert('Copiado!')">COPIAR PIX</button>
+            <button class="btn-g" style="font-size:10px; margin-top:10px;" onclick="copiarPix()">COPIAR PIX</button>
         </div>
-        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Voltar</p>
+        <p onclick="fecharM()" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">Sair</p>
     </div>
 
 <script>
@@ -131,15 +127,15 @@
         isLogin = !isLogin;
         document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN" : "CADASTRO";
         document.getElementById('campo-email').style.display = isLogin ? "none" : "block";
-        document.getElementById('toggle-auth').innerHTML = isLogin ? "Novo? <b>Crie conta com Gmail</b>" : "Já tem conta? <b>Login</b>";
+        document.getElementById('toggle-auth').innerHTML = isLogin ? "Novo? <b>Criar conta</b>" : "Já tem conta? <b>Login</b>";
     }
 
     async function auth() {
         const user = document.getElementById('u').value, pass = document.getElementById('p').value, email = document.getElementById('email').value;
-        if(!isLogin && (!email || !email.includes('@gmail.com'))) return alert("Use um Gmail válido!");
+        if(!isLogin && (!email || !email.includes('@gmail.com'))) return alert("Use um Gmail!");
         const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user, pass, email}) });
         const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo || 0; state.g = d.ganhos || 0; iniciar(); } else alert(d.message);
+        if(d.success) { state.u = d.user; state.s = d.saldo; state.g = d.ganhos; iniciar(); } else alert(d.message);
     }
 
     function iniciar() {
@@ -184,7 +180,7 @@
 
     function mostrarRes(v) {
         document.getElementById('res-icon').innerText = v > 0 ? "💰" : "❌";
-        document.getElementById('res-titulo').innerText = v > 0 ? "VOCÊ GANHOU!" : "TENTE NOVAMENTE";
+        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
         document.getElementById('overlay-bg').style.display='block'; document.getElementById('resultado-modal').style.display='block';
     }
@@ -192,16 +188,19 @@
     function fecharResultado() { document.getElementById('resultado-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
 
     async function gerarPix() {
-        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
+        const v = document.getElementById('v-pix').value;
+        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:v}) });
         const d = await res.json();
         if(d.success) { document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr; state.pix_code = d.copia_e_cola; document.getElementById('res-pix').style.display='block'; }
     }
+
+    function copiarPix() { navigator.clipboard.writeText(state.pix_code); alert("PIX Copiado!"); }
 
     async function sacar() {
         const v = document.getElementById('v-saque').value, ch = document.getElementById('ch-pix').value;
         const res = await fetch('/solicitar-saque', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, valor:v, chavePix:ch}) });
         const d = await res.json();
-        if(d.success) { state.s = d.novoSaldo; state.g = d.novoGanhos; atualizar(); alert("Pedido enviado com sucesso!"); fecharM(); } else alert(d.message);
+        if(d.success) { state.s = d.novoSaldo; state.g = d.novoGanhos; atualizar(); alert("Saque solicitado!"); fecharM(); } else alert(d.message);
     }
 
     function atualizar() { 
