@@ -25,7 +25,7 @@ const Saque = mongoose.model('Saque', new mongoose.Schema({
     user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
 }));
 
-// --- ROTA PIX (ARRUMADA PARA NÃO DAR ERRO) ---
+// --- ROTA PIX ---
 app.post('/gerar-pix', (req, res) => {
     const { valor, userLogado } = req.body;
     const nomeLimpo = userLogado.replace(/[^a-zA-Z]/g, '') || "Jogador";
@@ -67,11 +67,16 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.write(data); mpReq.end();
 });
 
-// --- ADMIN E JOGO ---
+// --- ADMIN ATUALIZADO (GERENTE) ---
+
+// Essa rota agora busca usuários E saques pendentes
 app.post('/admin/users', async (req, res) => {
     if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    const users = await User.find({}, 'user saldo').sort({ saldo: -1 });
-    res.json({ success: true, users });
+    try {
+        const users = await User.find({}, 'user saldo').sort({ saldo: -1 });
+        const saques = await Saque.find({ status: 'Pendente' }).sort({ data: -1 });
+        res.json({ success: true, users, saques }); // Envia os dois para o gerente
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.post('/admin/add-bonus', async (req, res) => {
@@ -80,6 +85,16 @@ app.post('/admin/add-bonus', async (req, res) => {
     res.json({ success: true });
 });
 
+// Nova rota para o gerente confirmar que pagou o PIX
+app.post('/admin/finalizar-saque', async (req, res) => {
+    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
+    try {
+        await Saque.findByIdAndUpdate(req.body.id, { status: 'Pago' });
+        res.json({ success: true });
+    } catch (e) { res.json({ success: false }); }
+});
+
+// --- JOGO E SAQUE ---
 app.post('/solicitar-saque', async (req, res) => {
     const { user, valor, chavePix } = req.body;
     const u = await User.findOne({ user });
