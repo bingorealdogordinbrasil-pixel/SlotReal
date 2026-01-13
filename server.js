@@ -2,11 +2,9 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const https = require('https');
-const cors = require('cors'); // Adicionado para evitar erro de bloqueio no navegador
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // Permite que o front fale com o back sem travar
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- CONFIGURAÇÃO ---
@@ -15,7 +13,7 @@ const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ BANCO CONECTADO"))
-    .catch(err => console.log("❌ ERRO BANCO:", err));
+    .catch(err => console.log("❌ ERRO MONGO:", err));
 
 // MODELS
 const User = mongoose.model('User', new mongoose.Schema({
@@ -27,34 +25,26 @@ const User = mongoose.model('User', new mongoose.Schema({
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-const Saque = mongoose.model('Saque', new mongoose.Schema({
-    user: String, valor: Number, chavePix: String, status: { type: String, default: 'Pendente' }, data: { type: Date, default: Date.now }
-}));
-
-// --- ROTAS DE AUTENTICAÇÃO ---
+// --- ROTAS ---
 app.post('/auth/register', async (req, res) => {
     try {
         const { user, pass, email } = req.body;
         const exists = await User.findOne({ $or: [{ user }, { email }] });
-        if (exists) return res.json({ success: false, message: "Usuário/Email já existe" });
+        if (exists) return res.json({ success: false, message: "Já existe!" });
         const novo = await User.create({ user, pass, email });
         res.json({ success: true, user: novo.user, saldo: 0, ganhos: 0 });
-    } catch (e) { res.json({ success: false, message: "Erro no servidor" }); }
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.post('/auth/login', async (req, res) => {
-    try {
-        const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-        if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos });
-        else res.json({ success: false, message: "Dados incorretos" });
-    } catch(e) { res.json({ success: false }); }
+    const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
+    if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos });
+    else res.json({ success: false, message: "Incorreto" });
 });
 
-// --- GERAÇÃO DE PIX (MERCADO PAGO) ---
+// --- PIX MERCADO PAGO (FIXED) ---
 app.post('/gerar-pix', (req, res) => {
     const { valor, userLogado } = req.body;
-    
-    // Nome limpo para o email fake do MP
     const cleanUser = String(userLogado).replace(/[^a-zA-Z0-9]/g, '');
 
     const postData = JSON.stringify({
@@ -63,9 +53,7 @@ app.post('/gerar-pix', (req, res) => {
         payment_method_id: "pix",
         payer: {
             email: `${cleanUser}@gmail.com`,
-            first_name: cleanUser,
-            last_name: "User",
-            identification: { type: "CPF", number: "19119119100" } // CPF genérico necessário para algumas APIs
+            identification: { type: "CPF", number: "19119119100" }
         }
     });
 
@@ -76,39 +64,30 @@ app.post('/gerar-pix', (req, res) => {
         headers: {
             'Authorization': `Bearer ${MP_TOKEN}`,
             'Content-Type': 'application/json',
-            'X-Idempotency-Key': 'key_' + Date.now()
+            'X-Idempotency-Key': 'key' + Date.now()
         }
     };
 
     const mpReq = https.request(options, (mpRes) => {
-        let chunks = [];
-        mpRes.on('data', d => chunks.push(d));
+        let b = '';
+        mpRes.on('data', d => b += d);
         mpRes.on('end', () => {
-            const data = Buffer.concat(chunks).toString();
             try {
-                const response = JSON.parse(data);
-                if (response.point_of_interaction) {
+                const r = JSON.parse(b);
+                if (r.point_of_interaction) {
                     res.json({
                         success: true,
-                        imagem_qr: response.point_of_interaction.transaction_data.qr_code_base64,
-                        copia_e_cola: response.point_of_interaction.transaction_data.qr_code
+                        imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64,
+                        copia_e_cola: r.point_of_interaction.transaction_data.qr_code
                     });
-                } else {
-                    console.log("Erro MP:", response);
-                    res.json({ success: false, message: response.message || "Erro no MP" });
-                }
-            } catch (e) {
-                res.json({ success: false, message: "Erro ao processar resposta" });
-            }
+                } else { res.json({ success: false }); }
+            } catch (e) { res.json({ success: false }); }
         });
     });
-
-    mpReq.on('error', (e) => res.json({ success: false, message: "Erro de conexão" }));
     mpReq.write(postData);
     mpReq.end();
 });
 
-// --- OUTRAS APIS ---
 app.post('/api/save-saldo', async (req, res) => {
     await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
     res.json({ success: true });
@@ -116,7 +95,6 @@ app.post('/api/save-saldo', async (req, res) => {
 
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
-    if(!u) return res.json({ success: false });
     let menor = Math.min(...u.bets), cores = [];
     u.bets.forEach((v, i) => { if(v === menor) cores.push(i); });
     const alvo = cores[Math.floor(Math.random() * cores.length)];
@@ -131,4 +109,4 @@ let t = 120; setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Servidor Rodando!"));
+app.listen(PORT, () => console.log("Servidor ON"));
