@@ -2,230 +2,118 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal - Premium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerente - SlotReal</title>
     <style>
-        body { background: #000; color: #fff; font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
-        
-        /* BARRA TOPO */
-        .top-bar { width: 100%; background: #111; padding: 15px; display: flex; justify-content: space-around; align-items: center; border-bottom: 2px solid #d4af37; box-sizing: border-box; position: sticky; top: 0; z-index: 10; }
-        .saldo-box { background: #000; padding: 5px 15px; border-radius: 20px; border: 1px solid #333; }
-        
-        /* LOGIN */
-        .card { background: #111; padding: 30px; border: 1px solid #d4af37; margin-top: 80px; width: 300px; display: inline-block; border-radius: 20px; box-shadow: 0 0 20px rgba(212,175,55,0.2); }
-        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; outline: none; }
-        input:focus { border-color: #d4af37; }
-        
-        /* BOTÕES */
-        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 14px; border-radius: 10px; font-weight: bold; width: 95%; cursor: pointer; color: #000; text-transform: uppercase; transition: 0.2s; }
-        .btn-g:active { transform: scale(0.95); }
-        
-        /* GRID DE JOGO */
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; padding: 15px; margin: 20px auto; max-width: 360px; background: #111; border-radius: 10px; border: 1px solid #222; }
-        .cell { width: 38px; height: 38px; border-radius: 6px; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #000; transition: 0.1s; }
-        
-        /* ÁREA DE APOSTAS */
-        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 95%; max-width: 400px; margin: 20px auto; }
-        .btn-bet { background: #1a1a1a; padding: 10px 5px; border-radius: 8px; font-size: 11px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; }
-        .btn-bet b { display: block; font-size: 14px; color: #2ecc71; margin-top: 4px; }
-
-        /* MODAIS DE DEPÓSITO/SAQUE */
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; color: #fff; padding: 25px; border-radius: 20px; width: 300px; z-index: 100; border: 1px solid #d4af37; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
-        .modal h3 { color: #d4af37; margin-top: 0; }
-        
-        /* AVISO DE RESULTADO (GANHOU/PERDEU) */
-        #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; backdrop-filter: blur(6px); }
-        #resultado-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); width: 280px; background: #111; border: 2px solid #d4af37; border-radius: 25px; padding: 35px; text-align: center; z-index: 1000; box-shadow: 0 0 40px rgba(212, 175, 55, 0.4); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        #resultado-modal.show { display: block; transform: translate(-50%, -50%) scale(1); }
-        .result-val { font-size: 36px; margin: 15px 0; font-weight: bold; }
-        .result-icon { font-size: 60px; margin-bottom: 10px; }
+        body { background: #050505; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        .container { max-width: 900px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; margin-bottom: 20px; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; margin: 5px; width: 200px; }
+        .btn { background: #d4af37; color: black; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
+        th { color: #d4af37; background: #222; }
+        .bonus-section { border: 1px dashed #d4af37; padding: 15px; margin-bottom: 20px; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="tela-login">
-        <div class="card">
-            <h2 style="color:#d4af37; margin-top:0;">SlotReal</h2>
-            <input type="text" id="u" placeholder="Utilizador">
-            <input type="password" id="p" placeholder="Palavra-passe">
-            <button class="btn-g" onclick="logar()">ENTRAR</button>
-        </div>
+<div class="container">
+    <h2>👑 PAINEL ADMINISTRATIVO</h2>
+    <input type="password" id="pass-admin" placeholder="Senha do Gerente">
+    <button class="btn" onclick="carregarLista()">ATUALIZAR TUDO</button>
+</div>
+
+<div class="container" style="border-color: #e74c3c;">
+    <h3 style="color:#e74c3c; margin:0 0 10px 0;">💸 PEDIDOS DE SAQUE</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>USUÁRIO</th>
+                <th>VALOR</th>
+                <th>CHAVE PIX</th>
+                <th>AÇÃO</th>
+            </tr>
+        </thead>
+        <tbody id="saque-list">
+            <tr><td colspan="4">Carregue a lista...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <div class="bonus-section">
+        <h3>🎁 DAR BÔNUS</h3>
+        <input type="text" id="target-id" placeholder="Usuário" readonly>
+        <input type="number" id="bonus-val" placeholder="Valor R$">
+        <button class="btn" onclick="enviarBonus()" style="background:#2ecc71; color:white;">ENVIAR BÔNUS</button>
     </div>
 
-    <div id="tela-jogo" style="display:none">
-        <div class="top-bar">
-            <div class="saldo-box">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
-            <div>
-                <button onclick="abrirM('m-pix')" style="background:#009ee3; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; margin-right:5px;">DEPÓSITO</button>
-                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:bold;">SAQUE</button>
-            </div>
-        </div>
-        
-        <h2 id="timer" style="color:#d4af37; font-size: 40px; margin: 20px 0 10px 0;">02:00</h2>
-        <p style="color: #666; margin-bottom: 10px;">PRÓXIMA RODADA EM BREVE</p>
-
-        <div id="grid" class="grid"></div>
-        
-        <div style="margin-top: 10px; color: #d4af37; font-weight:bold;">FAÇA AS SUAS APOSTAS:</div>
-        <div id="bet-area" class="bet-area"></div>
-    </div>
-
-    <div id="overlay-bg"></div>
-    <div id="resultado-modal">
-        <div id="res-icon" class="result-icon">💰</div>
-        <h2 id="res-titulo">GANHOU!</h2>
-        <div id="res-valor" class="result-val">R$ 0.00</div>
-        <button class="btn-g" onclick="fecharResultado()">CONTINUAR</button>
-    </div>
-
-    <div id="m-pix" class="modal">
-        <h3>Depósito PIX</h3>
-        <input type="number" id="v-pix" value="20" style="background:#fff; color:#000">
-        <button class="btn-g" id="btn-pix" onclick="gerarPix()">GERAR PIX</button>
-        <div id="res-pix" style="display:none; margin-top:15px;">
-            <img id="q-img" style="width:180px; background:#fff; padding:5px; border-radius:10px;">
-            <button class="btn-g" style="margin-top:10px; font-size:12px;" onclick="navigator.clipboard.writeText(state.pix_code); alert('Copiado!')">COPIAR CHAVE PIX</button>
-        </div>
-        <p onclick="fecharM()" style="color:#666; cursor:pointer; margin-top:15px;">Fechar</p>
-    </div>
-
-    <div id="m-saque" class="modal">
-        <h3>Solicitar Saque</h3>
-        <input type="text" id="ch-pix" placeholder="Sua Chave PIX" style="background:#fff; color:#000">
-        <input type="number" id="v-saque" placeholder="Valor R$" style="background:#fff; color:#000">
-        <button class="btn-g" onclick="sacar()">SOLICITAR PIX</button>
-        <p onclick="fecharM()" style="color:#666; cursor:pointer; margin-top:15px;">Fechar</p>
-    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>USUÁRIO</th>
+                <th>SALDO (R$)</th>
+                <th>AÇÃO</th>
+            </tr>
+        </thead>
+        <tbody id="user-list"></tbody>
+    </table>
+</div>
 
 <script>
-    let bloqueado = false;
-    let state = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0, pix_code: '' };
-    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
-    const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
+    async function carregarLista() {
+        const senha = document.getElementById('pass-admin').value;
+        if(!senha) return alert("Digite a senha!");
 
-    async function logar() {
-        const u = document.getElementById('u').value.trim();
-        const p = document.getElementById('p').value;
-        if(!u || !p) return alert("Preencha tudo!");
-        
-        const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p}) });
+        try {
+            const res = await fetch('/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senha })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Preenche Usuários
+                const tbodyU = document.getElementById('user-list');
+                tbodyU.innerHTML = '';
+                data.users.forEach(u => {
+                    tbodyU.innerHTML += `<tr><td>${u.user}</td><td style="color:#2ecc71">R$ ${u.saldo.toFixed(2)}</td><td><button onclick="selecionar('${u.user}')">Selecionar</button></td></tr>`;
+                });
+
+                // Preenche Saques (Aqui está a mágica!)
+                const tbodyS = document.getElementById('saque-list');
+                tbodyS.innerHTML = data.saques.length ? '' : '<tr><td colspan="4">Nenhum saque pendente.</td></tr>';
+                data.saques.forEach(s => {
+                    tbodyS.innerHTML += `
+                        <tr>
+                            <td>${s.user}</td>
+                            <td style="color:#e74c3c">R$ ${s.valor.toFixed(2)}</td>
+                            <td style="background:#000; font-family:monospace">${s.chavePix}</td>
+                            <td><button onclick="finalizarSaque('${s._id}')" style="background:#2ecc71; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer;">MARCAR PAGO</button></td>
+                        </tr>`;
+                });
+            } else { alert(data.message); }
+        } catch (err) { alert("Erro de conexão!"); }
+    }
+
+    function selecionar(id) { document.getElementById('target-id').value = id; }
+
+    async function enviarBonus() {
+        const senha = document.getElementById('pass-admin').value;
+        const targetUser = document.getElementById('target-id').value;
+        const valor = document.getElementById('bonus-val').value;
+        const res = await fetch('/admin/add-bonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha, targetUser, valor }) });
         const d = await res.json();
-        if(d.success) { 
-            state.u = u; state.s = d.saldo; state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; 
-            iniciar(); 
-        } else alert("Utilizador ou senha incorretos!");
+        if(d.success) { alert("Bônus enviado!"); carregarLista(); }
     }
 
-    function iniciar() {
-        document.getElementById('tela-login').style.display = 'none';
-        document.getElementById('tela-jogo').style.display = 'block';
-        
-        const g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=0; i<64; i++){
-            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
-            const p = MAP.indexOf(i); 
-            if(p !== -1) { 
-                c.style.background = CORES[p%10]; 
-                c.innerText = 'R$5'; 
-            } else c.style.opacity = '0.05';
-            g.appendChild(c);
-        }
-
-        const area = document.getElementById('bet-area'); area.innerHTML = '';
-        CORES.forEach((c, i) => {
-            const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
-            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
-            b.onclick = async () => { 
-                if(!bloqueado && state.s >= 1){ 
-                    state.b[i]++; state.s--; atualizar(); 
-                    await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
-                } else if(state.s < 1) alert("Saldo insuficiente!");
-            };
-            area.appendChild(b);
-        });
-        atualizar(); setInterval(sync, 1000);
+    async function finalizarSaque(id) {
+        const senha = document.getElementById('pass-admin').value;
+        if(!confirm("Já pagou o PIX?")) return;
+        await fetch('/admin/finalizar-saque', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha, id }) });
+        carregarLista();
     }
-
-    async function sync() {
-        const res = await fetch('/api/tempo-real'); const d = await res.json();
-        document.getElementById('timer').innerText = `${Math.floor(d.segundos/60)}:${(d.segundos%60).toString().padStart(2,'0')}`;
-        if(d.segundos === 0 && !bloqueado) rodar();
-    }
-
-    async function rodar() {
-        bloqueado = true;
-        const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
-        const d = await res.json();
-        
-        let ganhoTotal = Number((d.novoSaldo - state.s).toFixed(2));
-        let target = -1; for(let i=0; i<MAP.length; i++) if(i%10 === d.corAlvo) { target = i; break; }
-        
-        let total = (MAP.length * 2) + target, count = 0;
-        const loop = () => {
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
-            state.idx = (state.idx + 1) % MAP.length;
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = '0 0 20px #fff';
-            if(++count < total) setTimeout(loop, 50);
-            else { 
-                // CHAMA O RESULTADO PROFISSIONAL
-                mostrarResultado(ganhoTotal);
-                state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false; 
-            }
-        }; loop();
-    }
-
-    function mostrarResultado(valor) {
-        const modal = document.getElementById('resultado-modal');
-        const bg = document.getElementById('overlay-bg');
-        if(valor > 0) {
-            document.getElementById('res-icon').innerText = "💰";
-            document.getElementById('res-titulo').innerText = "VOCÊ GANHOU!";
-            document.getElementById('res-titulo').style.color = "#d4af37";
-            document.getElementById('res-valor').innerText = `+ R$ ${valor.toFixed(2)}`;
-            document.getElementById('res-valor').style.color = "#2ecc71";
-        } else {
-            document.getElementById('res-icon').innerText = "❌";
-            document.getElementById('res-titulo').innerText = "SEM GANHOS";
-            document.getElementById('res-titulo').style.color = "#888";
-            document.getElementById('res-valor').innerText = "R$ 0.00";
-            document.getElementById('res-valor').style.color = "#e74c3c";
-        }
-        bg.style.display = 'block';
-        modal.classList.add('show');
-    }
-
-    function fecharResultado() {
-        document.getElementById('resultado-modal').classList.remove('show');
-        document.getElementById('overlay-bg').style.display = 'none';
-    }
-
-    async function gerarPix() {
-        const v = document.getElementById('v-pix').value;
-        const btn = document.getElementById('btn-pix'); btn.innerText = "GERANDO...";
-        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:v}) });
-        const d = await res.json();
-        if(d.success) {
-            document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
-            state.pix_code = d.copia_e_cola;
-            document.getElementById('res-pix').style.display = 'block';
-        }
-        btn.innerText = "GERAR PIX";
-    }
-
-    async function sacar() {
-        const v = document.getElementById('v-saque').value, ch = document.getElementById('ch-pix').value;
-        if(!v || !ch) return alert("Preencha os dados!");
-        const res = await fetch('/solicitar-saque', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, valor:v, chavePix:ch}) });
-        const d = await res.json();
-        if(d.success) { state.s = d.novoSaldo; atualizar(); alert("Solicitação enviada!"); fecharM(); } else alert(d.message);
-    }
-
-    function atualizar() { 
-        document.getElementById('s-display').innerText = state.s.toFixed(2); 
-        state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
-    }
-    function abrirM(id) { document.getElementById(id).style.display='block'; }
-    function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); }
 </script>
 </body>
 </html>
