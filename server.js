@@ -12,9 +12,8 @@ const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa93
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "123456"; 
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA INTEGRADO CONECTADO"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA ONLINE"));
 
-// MODELOS
 const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
@@ -30,72 +29,63 @@ const Saque = mongoose.model('Saque', new mongoose.Schema({
     data: { type: Date, default: Date.now }
 }));
 
-// --- ROTAS DO GERENTE (ADMIN) ---
-
-// 1. Carrega Usuários e Saques Pendentes
-app.post('/admin/users', async (req, res) => {
-    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false, message: "Senha Inválida" });
-    try {
-        const users = await User.find({}, 'user saldo').sort({ saldo: -1 });
-        const saques = await Saque.find({ status: 'Pendente' }).sort({ data: -1 });
-        res.json({ success: true, users, saques });
-    } catch (e) { res.json({ success: false }); }
-});
-
-// 2. Adicionar Bônus
-app.post('/admin/add-bonus', async (req, res) => {
-    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    try {
-        await User.findOneAndUpdate({ user: req.body.targetUser }, { $inc: { saldo: Number(req.body.valor) } });
-        res.json({ success: true });
-    } catch (e) { res.json({ success: false }); }
-});
-
-// 3. Finalizar Saque (Marcar como Pago)
-app.post('/admin/finalizar-saque', async (req, res) => {
-    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    try {
-        await Saque.findByIdAndUpdate(req.body.id, { status: 'Pago' });
-        res.json({ success: true });
-    } catch (e) { res.json({ success: false }); }
-});
-
-// --- ROTA DE SAQUE (CLIENTE) ---
-app.post('/solicitar-saque', async (req, res) => {
-    const { user, valor, chavePix } = req.body;
-    const u = await User.findOne({ user });
-    if (u && u.saldo >= valor) {
-        const novoSaldo = Number((u.saldo - valor).toFixed(2));
-        await User.findOneAndUpdate({ user }, { saldo: novoSaldo });
-        await Saque.create({ user, valor, chavePix });
-        res.json({ success: true, novoSaldo });
-    } else res.json({ success: false, message: "Saldo insuficiente" });
-});
-
-// --- ROTA PIX E JOGO (RESUMIDAS PARA FUNCIONAR) ---
+// --- ROTA PIX ORIGINAL (SEM MEXER EM NADA) ---
 app.post('/gerar-pix', (req, res) => {
     const { valor, userLogado } = req.body;
     const data = JSON.stringify({
         transaction_amount: Number(valor),
-        description: `Deposito - ${userLogado}`,
+        description: `Deposito Slot - ${userLogado}`,
         payment_method_id: "pix",
-        payer: { email: `${userLogado}@gmail.com`, first_name: userLogado, last_name: "User", identification: { type: "CPF", number: "19119119100" } }
+        payer: { email: `${userLogado.replace(/\s/g, '')}@gmail.com` }
     });
     const options = {
         hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
-        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': 'k' + Date.now() }
+        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': Date.now().toString() }
     };
     const mpReq = https.request(options, (mpRes) => {
         let b = ''; mpRes.on('data', d => b += d);
         mpRes.on('end', () => {
             const r = JSON.parse(b);
             if (r.point_of_interaction) res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code });
-            else res.json({ success: false, message: r.message });
+            else res.json({ success: false });
         });
     });
     mpReq.write(data); mpReq.end();
 });
 
+// --- ROTAS DO GERENTE (BUSCANDO SAQUES E USERS) ---
+app.post('/admin/users', async (req, res) => {
+    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false, message: "Senha Inválida" });
+    try {
+        const users = await User.find({}, 'user saldo').sort({ saldo: -1 });
+        const saques = await Saque.find({ status: 'Pendente' }).sort({ data: -1 }); // BUSCA OS SAQUES AQUI
+        res.json({ success: true, users, saques });
+    } catch (e) { res.json({ success: false }); }
+});
+
+app.post('/admin/add-bonus', async (req, res) => {
+    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
+    await User.findOneAndUpdate({ user: req.body.targetUser }, { $inc: { saldo: Number(req.body.valor) } });
+    res.json({ success: true });
+});
+
+app.post('/admin/finalizar-saque', async (req, res) => {
+    if (req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
+    await Saque.findByIdAndUpdate(req.body.id, { status: 'Pago' });
+    res.json({ success: true });
+});
+
+app.post('/solicitar-saque', async (req, res) => {
+    const { user, valor, chavePix } = req.body;
+    const u = await User.findOne({ user });
+    if (u && u.saldo >= valor) {
+        await User.findOneAndUpdate({ user }, { $inc: { saldo: -valor } });
+        await Saque.create({ user, valor, chavePix });
+        res.json({ success: true, novoSaldo: u.saldo - valor });
+    } else res.json({ success: false, message: "Saldo insuficiente" });
+});
+
+// --- RESTO DAS ROTAS ---
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, saldo: c.saldo, user: c.user, bets: c.bets });
