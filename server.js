@@ -1,4 +1,4 @@
-Const express = require('express');
+const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const https = require('https');
@@ -44,7 +44,6 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
-// SPIN MANIPULADO: SEMPRE CAI NO MENOS APOSTADO
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
@@ -64,7 +63,6 @@ app.post('/api/spin', async (req, res) => {
     } catch (e) { res.json({ success: false }); }
 });
 
-// ROTA DO QR CODE RESTAURADA (A QUE FUNCIONAVA)
 app.post('/gerar-pix', (req, res) => {
     const postData = JSON.stringify({
         transaction_amount: Number(req.body.valor),
@@ -94,7 +92,6 @@ app.post('/gerar-pix', (req, res) => {
         mpRes.on('end', () => {
             try {
                 const r = JSON.parse(b);
-                // ESSA É A ESTRUTURA QUE O MERCADO PAGO ENVIA QUANDO DÁ CERTO
                 if (r.point_of_interaction && r.point_of_interaction.transaction_data) {
                     res.json({ 
                         success: true, 
@@ -104,9 +101,7 @@ app.post('/gerar-pix', (req, res) => {
                 } else {
                     res.json({ success: false, message: "Erro no MP" });
                 }
-            } catch(e) { 
-                res.json({ success: false }); 
-            }
+            } catch(e) { res.json({ success: false }); }
         });
     });
     
