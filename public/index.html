@@ -18,14 +18,13 @@
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
         .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.75); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(4px); }
-        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: transform 0.1s; }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; }
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
         
-        /* Modal Atualizado */
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; box-shadow: 0 0 50px #000; }
         #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; backdrop-filter: blur(8px); }
-        .cor-resultado { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; margin: 10px auto; display: block; }
+        .cor-resultado { width: 50px; height: 50px; border-radius: 50%; border: 3px solid #fff; margin: 15px auto; display: block; }
     </style>
 </head>
 <body>
@@ -63,8 +62,8 @@
     
     <div id="res-modal" class="modal">
         <div id="res-icon" style="font-size:50px;">💰</div>
-        <h2 id="res-titulo" style="margin: 5px 0;">GANHOU!</h2>
-        <p style="margin: 0; font-size: 12px; color: #888;">COR SORTEADA:</p>
+        <h2 id="res-titulo" style="margin:5px 0;">GANHOU!</h2>
+        <p style="margin:0; font-size:12px; color:#888;">COR SORTEADA:</p>
         <div id="res-cor-ball" class="cor-resultado"></div>
         <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold; margin-bottom:15px;">R$ 0.00</div>
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
@@ -120,11 +119,20 @@
     function iniciar() {
         document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
+        
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
-            const p = MAP.indexOf(i); if(p !== -1) { c.style.background = CORES[p%10]; c.innerText = 'R$5'; } else c.style.opacity = '0.05';
+            const p = MAP.indexOf(i); 
+            if(p !== -1) { 
+                // CORRIGIDO: Sincroniza a cor visual com a lógica p % 10
+                c.style.background = CORES[p % 10]; 
+                c.innerText = 'R$5'; 
+            } else {
+                c.style.opacity = '0.05';
+            }
             g.appendChild(c);
         }
+
         const area = document.getElementById('bet-area'); area.innerHTML = '';
         CORES.forEach((c, i) => {
             const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
@@ -152,33 +160,42 @@
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
         
-        let targetPos = -1; 
-        for(let i=0; i<MAP.length; i++) if(i%10 === d.corAlvo) { targetPos = i; break; }
+        // CORRIGIDO: Encontra a posição exata no mapa para a cor sorteada
+        let targetPosNoMapa = -1;
+        for(let i = 0; i < MAP.length; i++) {
+            if(i % 10 === d.corAlvo) {
+                targetPosNoMapa = i;
+                break;
+            }
+        }
         
-        let totalSteps = (MAP.length * 3) + targetPos; 
+        let totalSteps = (MAP.length * 3) + targetPosNoMapa; 
         let currentStep = 0;
 
         const loop = () => {
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
-            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
+            const prevId = MAP[state.idx];
+            document.getElementById(`c-${prevId}`).style.boxShadow = 'none';
+            document.getElementById(`c-${prevId}`).style.transform = 'scale(1)';
 
             state.idx = (state.idx + 1) % MAP.length;
             
-            const current = document.getElementById(`c-${MAP[state.idx]}`);
-            current.style.boxShadow = '0 0 20px #fff, inset 0 0 10px #fff';
-            current.style.transform = 'scale(1.25)';
+            const currentId = MAP[state.idx];
+            const currentEl = document.getElementById(`c-${currentId}`);
+            currentEl.style.boxShadow = '0 0 25px #fff, inset 0 0 10px #fff';
+            currentEl.style.transform = 'scale(1.3)';
+            currentEl.style.zIndex = '10';
             
             playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
 
             if(++currentStep < totalSteps) {
                 let delay = 40;
                 let remaining = totalSteps - currentStep;
-                if (remaining < 15) delay += (15 - remaining) * 35;
+                if (remaining < 20) delay += (20 - remaining) * 25;
                 setTimeout(loop, delay);
             } else { 
+                // PARADA FINAL
                 if(d.valorGanho > 0) playSfx(523.25, 'triangle', 0.4, 0.2);
                 
-                // Espera 1.5s com a luz parada e depois mostra o resultado com a cor
                 setTimeout(() => {
                     mostrarFim(d.valorGanho, CORES[d.corAlvo]);
                     state.s = d.novoSaldo; 
@@ -198,7 +215,6 @@
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
         document.getElementById('res-icon').innerText = v > 0 ? "💰" : "❌";
         
-        // Define a cor da bolinha no modal
         const ball = document.getElementById('res-cor-ball');
         ball.style.backgroundColor = corSorteada;
         ball.style.boxShadow = `0 0 15px ${corSorteada}`;
@@ -214,7 +230,6 @@
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
     
-    // ... funções de PIX permanecem as mesmas ...
     async function gerarPix() { 
         const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
         const d = await res.json();
