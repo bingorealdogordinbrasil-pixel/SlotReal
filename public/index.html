@@ -69,27 +69,6 @@
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
     </div>
 
-    <div id="m-pix" class="modal">
-        <h3 style="color:#d4af37">DEPOSITAR PIX</h3>
-        <input type="number" id="v-pix" value="20">
-        <button class="btn-g" onclick="gerarPix()">GERAR PAGAMENTO</button>
-        <div id="res-pix" style="display:none; margin-top:15px; background:#fff; padding:10px; border-radius:10px;">
-            <img id="q-img" style="width:180px; height:180px; display:block; margin:0 auto;">
-            <input type="text" id="pix-copy" readonly style="width:100%; font-size:10px; color:#000; margin-top:5px;">
-            <button class="btn-g" style="margin-top:10px; font-size:12px;" onclick="copiarPix()">COPIAR CÓDIGO</button>
-        </div>
-        <p onclick="fecharM()" style="color:red; cursor:pointer; margin-top:15px;">SAIR</p>
-    </div>
-
-    <div id="m-saque" class="modal">
-        <h3 style="color:#d4af37">SAQUE URUBU</h3>
-        <p>Ganhos: <b id="g-display" style="color:#2ecc71">0.00</b></p>
-        <input type="text" placeholder="Chave PIX">
-        <input type="number" id="v-saque" placeholder="Valor">
-        <button class="btn-g" onclick="alert('Saque solicitado!')">SOLICITAR</button>
-        <p onclick="fecharM()" style="color:red; cursor:pointer; margin-top:15px;">FECHAR</p>
-    </div>
-
 <script>
     let isLogin = true, bloqueado = false;
     let state = { u: '', s: 0, g: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
@@ -124,7 +103,6 @@
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
             const p = MAP.indexOf(i); 
             if(p !== -1) { 
-                // CORRIGIDO: Sincroniza a cor visual com a lógica p % 10
                 c.style.background = CORES[p % 10]; 
                 c.innerText = 'R$5'; 
             } else {
@@ -160,7 +138,7 @@
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
         
-        // CORRIGIDO: Encontra a posição exata no mapa para a cor sorteada
+        // LÓGICA DE SINCRONIA: Encontra qual casa do grid (0-27) bate com a cor sorteada pelo servidor
         let targetPosNoMapa = -1;
         for(let i = 0; i < MAP.length; i++) {
             if(i % 10 === d.corAlvo) {
@@ -181,8 +159,8 @@
             
             const currentId = MAP[state.idx];
             const currentEl = document.getElementById(`c-${currentId}`);
-            currentEl.style.boxShadow = '0 0 25px #fff, inset 0 0 10px #fff';
-            currentEl.style.transform = 'scale(1.3)';
+            currentEl.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff';
+            currentEl.style.transform = 'scale(1.35)';
             currentEl.style.zIndex = '10';
             
             playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
@@ -190,10 +168,9 @@
             if(++currentStep < totalSteps) {
                 let delay = 40;
                 let remaining = totalSteps - currentStep;
-                if (remaining < 20) delay += (20 - remaining) * 25;
+                if (remaining < 15) delay += (15 - remaining) * 35; // Frenagem suave
                 setTimeout(loop, delay);
             } else { 
-                // PARADA FINAL
                 if(d.valorGanho > 0) playSfx(523.25, 'triangle', 0.4, 0.2);
                 
                 setTimeout(() => {
@@ -217,7 +194,7 @@
         
         const ball = document.getElementById('res-cor-ball');
         ball.style.backgroundColor = corSorteada;
-        ball.style.boxShadow = `0 0 15px ${corSorteada}`;
+        ball.style.boxShadow = `0 0 20px ${corSorteada}`;
 
         document.getElementById('overlay-bg').style.display = 'block';
         document.getElementById('res-modal').style.display = 'block';
@@ -230,6 +207,7 @@
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
     
+    // Funções do PIX (Mantidas do original)
     async function gerarPix() { 
         const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
         const d = await res.json();
