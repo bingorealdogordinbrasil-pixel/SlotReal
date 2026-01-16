@@ -9,39 +9,12 @@
         .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #051a05; background-image: radial-gradient(#114411 1px, transparent 1px); background-size: 25px 25px; z-index: -1; }
         .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
         .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
+        .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
+        input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
         
-        /* CONTAINER DOS 10 QUADRADOS */
-        .game-container { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 10px; 
-            max-width: 340px; 
-            margin: 40px auto; 
-            padding: 20px;
-            background: rgba(0,0,0,0.8);
-            border: 2px solid #d4af37;
-            border-radius: 15px;
-        }
-
-        .cell { 
-            aspect-ratio: 1/1; 
-            border-radius: 8px; 
-            font-size: 11px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: #000; 
-            font-weight: bold; 
-            transition: all 0.2s;
-            border: 2px solid rgba(255,255,255,0.1);
-        }
-
-        .active-cell { 
-            transform: scale(1.25); 
-            box-shadow: 0 0 30px #fff, inset 0 0 10px #fff; 
-            z-index: 5;
-            border: 2px solid #fff;
-        }
+        .game-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; max-width: 340px; margin: 40px auto; padding: 20px; background: rgba(0,0,0,0.8); border: 2px solid #d4af37; border-radius: 15px; }
+        .cell { aspect-ratio: 1/1; border-radius: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.2s; border: 2px solid rgba(255,255,255,0.1); }
+        .active-cell { transform: scale(1.25); box-shadow: 0 0 30px #fff, inset 0 0 10px #fff; z-index: 5; border: 2px solid #fff; }
 
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 5px solid transparent; cursor: pointer; color:#fff; }
@@ -54,15 +27,25 @@
 <body>
     <div class="money-bg"></div>
 
-    <div id="tela-jogo">
+    <div id="tela-login">
+        <div class="card-auth">
+            <h2 id="titulo-auth" style="color:#d4af37">LOGIN GOLD</h2>
+            <div id="campo-email" style="display:none"><input type="email" id="email" placeholder="Gmail"></div>
+            <input type="text" id="u" placeholder="Usuário">
+            <input type="password" id="p" placeholder="Senha">
+            <button class="btn-g" onclick="auth()">ENTRAR</button>
+            <p onclick="alternarAuth()" style="color:#888; cursor:pointer; font-size:12px; margin-top:15px;">Novo? <b>Criar conta</b></p>
+        </div>
+    </div>
+
+    <div id="tela-jogo" style="display:none">
         <div class="top-bar">
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
-            <button class="btn-g" style="width:auto; padding:5px 15px;">SAQUE</button>
+            <button class="btn-g" style="width:auto; padding:5px 15px;" onclick="abrirM()">SAQUE</button>
         </div>
         <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">00:30</h2></div>
         
         <div class="game-container" id="grid"></div>
-
         <div id="bet-area" class="bet-area"></div>
     </div>
 
@@ -75,94 +58,109 @@
     </div>
 
 <script>
-    let bloqueado = false;
-    let state = { u: 'User', s: 100, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
+    let isLogin = true, bloqueado = false;
+    let state = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
+    
+    // CORES CORRIGIDAS (Roxo 3, Verde 4)
+    const CORES = ['#FFF', '#444', '#FF0', '#A020F0', '#0F0', '#F00', '#00F', '#FF8C00', '#FF69B4', '#8B4513'];
 
-    // LISTA ÚNICA DE CORES (A Cor 3 é Roxo, Cor 4 é Verde)
-    // Se quiser mudar a ordem, mude aqui e o sistema ajusta tudo sozinho
-    const CORES = [
-        '#FFFFFF', // 0 Branco
-        '#444444', // 1 Cinza
-        '#FFFF00', // 2 Amarelo
-        '#A020F0', // 3 Roxo (Ajustado)
-        '#00FF00', // 4 Verde (Ajustado)
-        '#FF0000', // 5 Vermelho
-        '#0000FF', // 6 Azul
-        '#FF8C00', // 7 Laranja
-        '#FF69B4', // 8 Rosa
-        '#8B4513'  // 9 Marrom
-    ];
+    function alternarAuth() { 
+        isLogin = !isLogin; 
+        document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; 
+        document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; 
+    }
+
+    async function auth() {
+        const u = document.getElementById('u').value, p = document.getElementById('p').value, e = document.getElementById('email').value;
+        const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({user:u, pass:p, email:e}) 
+        });
+        const d = await res.json();
+        if(d.success) { 
+            state.u = d.user; state.s = d.saldo; state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; 
+            iniciar(); 
+        } else alert(d.message);
+    }
 
     function iniciar() {
+        document.getElementById('tela-login').style.display='none'; 
+        document.getElementById('tela-jogo').style.display='block';
+        
         const g = document.getElementById('grid'); g.innerHTML = '';
         const area = document.getElementById('bet-area'); area.innerHTML = '';
 
-        for(let i=0; i<10; i++) {
-            // Criar Quadrado de Cima
-            const c = document.createElement('div');
-            c.className = 'cell';
-            c.id = `c-${i}`;
-            c.style.background = CORES[i];
-            c.innerText = 'R$5';
+        for(let i=0; i<10; i++){
+            // Quadrados
+            const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
+            c.style.background = CORES[i]; c.innerText = 'R$5';
             g.appendChild(c);
 
-            // Criar Botão de Baixo
-            const b = document.createElement('div');
-            b.className = 'btn-bet';
-            b.style.borderBottomColor = CORES[i]; // Borda do botão com a cor certa
-            b.innerHTML = `COR ${i}<br><b id="vb-${i}">0</b>`;
-            b.onclick = () => {
-                if(!bloqueado && state.s >= 1) {
-                    state.b[i]++; state.s--; 
-                    atualizar();
-                    // Aqui iria seu fetch para salvar no banco
-                }
+            // Botões
+            const b = document.createElement('div'); b.className = 'btn-bet';
+            b.style.borderBottomColor = CORES[i];
+            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
+            b.onclick = async () => { 
+                if(!bloqueado && state.s >= 1){ 
+                    state.b[i]++; state.s--; atualizar(); 
+                    await fetch('/api/save-saldo', {
+                        method:'POST', 
+                        headers:{'Content-Type':'application/json'}, 
+                        body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})
+                    }); 
+                } 
             };
             area.appendChild(b);
         }
-        atualizar();
+        atualizar(); 
         setInterval(sync, 1000);
     }
 
     async function sync() {
-        let timerEl = document.getElementById('timer');
-        let t = parseInt(timerEl.innerText.split(':')[1]);
-        if(t > 0) {
-            t--;
-            timerEl.innerText = `00:${t.toString().padStart(2,'0')}`;
-        } else {
-            if(!bloqueado) rodar();
-            timerEl.innerText = "00:30";
-        }
+        const res = await fetch('/api/tempo-real'); 
+        const d = await res.json();
+        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+        if(d.segundos === 0 && !bloqueado) rodar();
     }
 
-    function rodar() {
+    async function rodar() {
         bloqueado = true;
-        // Simulação do servidor escolhendo a cor (No seu original, use o fetch /api/spin)
-        let alvo = Math.floor(Math.random() * 10); 
-        let currentStep = 0;
-        let totalSteps = 20 + alvo;
+        const res = await fetch('/api/spin', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({user:state.u}) 
+        });
+        const d = await res.json();
+        
+        let target = d.corAlvo;
+        let totalSteps = 30 + target; 
+        let curStep = 0;
 
         const loop = () => {
             document.querySelectorAll('.cell').forEach(el => el.classList.remove('active-cell'));
             state.idx = (state.idx + 1) % 10;
             document.getElementById(`c-${state.idx}`).classList.add('active-cell');
 
-            if(++currentStep < totalSteps) {
-                setTimeout(loop, 60 + (currentStep * 2));
+            if(++curStep < totalSteps) {
+                setTimeout(loop, 50 + (curStep * 2));
             } else {
                 setTimeout(() => {
-                    document.getElementById('res-cor-ball').style.backgroundColor = CORES[alvo];
-                    document.getElementById('res-valor').innerText = `R$ ${(state.b[alvo] * 5).toFixed(2)}`;
-                    document.getElementById('res-modal').style.display = 'block';
-                    document.getElementById('overlay-bg').style.display = 'block';
+                    mostrarFim(d.valorGanho, CORES[d.corAlvo]);
+                    state.s = d.novoSaldo; state.b.fill(0); 
+                    atualizar(); 
                     bloqueado = false;
-                    state.b.fill(0);
-                    atualizar();
-                }, 800);
+                }, 1000);
             }
-        };
+        }; 
         loop();
+    }
+
+    function mostrarFim(v, cor) {
+        document.getElementById('res-cor-ball').style.backgroundColor = cor;
+        document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
+        document.getElementById('overlay-bg').style.display = 'block';
+        document.getElementById('res-modal').style.display = 'block';
     }
 
     function fecharRes() { 
@@ -170,14 +168,15 @@
         document.getElementById('overlay-bg').style.display='none'; 
     }
 
-    function atualizar() {
+    function atualizar() { 
         document.getElementById('s-display').innerText = state.s.toFixed(2);
-        state.b.forEach((v, i) => {
-            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v;
+        state.b.forEach((v,i) => { 
+            const el = document.getElementById(`vb-${i}`);
+            if(el) el.innerText = v; 
         });
     }
 
-    iniciar();
+    function abrirM() { document.getElementById('overlay-bg').style.display='block'; }
 </script>
 </body>
 </html>
