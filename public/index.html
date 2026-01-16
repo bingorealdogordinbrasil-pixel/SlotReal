@@ -13,15 +13,16 @@
         input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
         
         .game-container { position: relative; max-width: 340px; margin: 20px auto; }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.75); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; }
-        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; }
-        
-        .active-cell { transform: scale(1.3); box-shadow: 0 0 20px #fff, inset 0 0 10px #fff; z-index: 10; border: 1px solid #fff; }
+        .centro-gold { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; pointer-events: none; }
+        .money-bag { font-size: 100px; filter: drop-shadow(0 0 25px #d4af37); animation: pulse 1.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.75); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(4px); }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; }
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
         
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; box-shadow: 0 0 50px #000; }
         #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; backdrop-filter: blur(8px); }
         .cor-resultado { width: 50px; height: 50px; border-radius: 50%; border: 3px solid #fff; margin: 15px auto; display: block; }
     </style>
@@ -44,21 +45,25 @@
         <div class="top-bar">
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <div>
-                <button onclick="abrirM()" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
-                <button onclick="abrirM()" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE</button>
+                <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
+                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE URUBU</button>
             </div>
         </div>
-        <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">00:30</h2></div>
+        <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">02:00</h2></div>
         
         <div class="game-container">
+            <div class="centro-gold"><div class="money-bag">💰</div></div>
             <div id="grid" class="grid"></div>
         </div>
         <div id="bet-area" class="bet-area"></div>
     </div>
 
     <div id="overlay-bg"></div>
+    
     <div id="res-modal" class="modal">
-        <h2 id="res-titulo">RESULTADO</h2>
+        <div id="res-icon" style="font-size:50px;">💰</div>
+        <h2 id="res-titulo">GANHOU!</h2>
+        <p style="font-size:12px; color:#888;">COR SORTEADA:</p>
         <div id="res-cor-ball" class="cor-resultado"></div>
         <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold; margin-bottom:15px;">R$ 0.00</div>
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
@@ -66,39 +71,39 @@
 
 <script>
     let isLogin = true, bloqueado = false;
-    let state = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
-    
-    // AS 10 CORES OFICIAIS (Sincronizadas com o servidor)
-    const CORES = ['#FFF', '#444', '#FF0', '#A020F0', '#0F0', '#F00', '#00F', '#FF8C00', '#FF69B4', '#8B4513'];
-    
-    // Caminho da borda do grid 8x8 (28 posições)
+    let state = { u: '', s: 0, g: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
+    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
     const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
 
-    function alternarAuth() { 
-        isLogin = !isLogin; 
-        document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; 
-        document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; 
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSfx(freq, type, dur, vol = 0.1) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + dur);
     }
+
+    function alternarAuth() { isLogin = !isLogin; document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; }
 
     async function auth() {
         const u = document.getElementById('u').value, p = document.getElementById('p').value, e = document.getElementById('email').value;
         const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p, email:e}) });
         const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo; state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; iniciar(); } else alert(d.message);
+        if(d.success) { state.u = d.user; state.s = d.saldo; state.g = d.ganhos; state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; iniciar(); } else alert(d.message);
     }
 
     function iniciar() {
-        document.getElementById('tela-login').style.display='none'; 
-        document.getElementById('tela-jogo').style.display='block';
+        document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
         
-        // Gerar grid 8x8 (64 células)
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
-            const posNoMapa = MAP.indexOf(i); 
-            if(posNoMapa !== -1) { 
-                // Atribui a cor baseada na posição do caminho (pos % 10) para bater com os botões
-                c.style.background = CORES[posNoMapa % 10]; 
+            const p = MAP.indexOf(i); 
+            if(p !== -1) { 
+                c.style.background = CORES[p % 10]; 
                 c.innerText = 'R$5'; 
             } else {
                 c.style.opacity = '0.05';
@@ -112,6 +117,7 @@
             b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
             b.onclick = async () => { 
                 if(!bloqueado && state.s >= 1){ 
+                    playSfx(400, 'sine', 0.1);
                     state.b[i]++; state.s--; atualizar(); 
                     await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
                 } 
@@ -123,7 +129,7 @@
 
     async function sync() {
         const res = await fetch('/api/tempo-real'); const d = await res.json();
-        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+        document.getElementById('timer').innerText = `${Math.floor(d.segundos/60)}:${(d.segundos%60).toString().padStart(2,'0')}`;
         if(d.segundos === 0 && !bloqueado) rodar();
     }
 
@@ -132,31 +138,57 @@
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
         
-        // Encontra o primeiro quadrado no MAP que tem a cor sorteada
-        let targetPos = -1;
-        for(let i=0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPos = i; break; } }
-
-        let totalSteps = (MAP.length * 2) + targetPos; 
+        // SINCRONIA: Encontra qual índice do MAP bate com a cor sorteada pelo servidor
+        let targetPosNoMapa = -1;
+        for(let i = 0; i < MAP.length; i++) {
+            if(i % 10 === d.corAlvo) {
+                targetPosNoMapa = i;
+                break;
+            }
+        }
+        
+        let totalSteps = (MAP.length * 3) + targetPosNoMapa; 
         let currentStep = 0;
 
         const loop = () => {
-            document.querySelectorAll('.cell').forEach(el => el.classList.remove('active-cell'));
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
+            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
+
             state.idx = (state.idx + 1) % MAP.length;
-            document.getElementById(`c-${MAP[state.idx]}`).classList.add('active-cell');
+            
+            const currentEl = document.getElementById(`c-${MAP[state.idx]}`);
+            currentEl.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff';
+            currentEl.style.transform = 'scale(1.35)';
+            
+            playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
 
             if(++currentStep < totalSteps) {
-                setTimeout(loop, 40 + (currentStep * 2));
-            } else {
+                let delay = 40;
+                let remaining = totalSteps - currentStep;
+                if (remaining < 15) delay += (15 - remaining) * 35; 
+                setTimeout(loop, delay);
+            } else { 
                 setTimeout(() => {
-                    document.getElementById('res-cor-ball').style.backgroundColor = CORES[d.corAlvo];
-                    document.getElementById('res-valor').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
-                    document.getElementById('overlay-bg').style.display = 'block';
-                    document.getElementById('res-modal').style.display = 'block';
-                    state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false;
-                }, 1000);
+                    mostrarFim(d.valorGanho, CORES[d.corAlvo]);
+                    state.s = d.novoSaldo; 
+                    state.g = d.novoGanhos; 
+                    state.b.fill(0); 
+                    atualizar(); 
+                    bloqueado = false; 
+                }, 1500); 
             }
         }; 
         loop();
+    }
+
+    function mostrarFim(v, corSorteada) {
+        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
+        document.getElementById('res-titulo').style.color = v > 0 ? "#2ecc71" : "#e74c3c";
+        document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
+        document.getElementById('res-cor-ball').style.backgroundColor = corSorteada;
+        document.getElementById('res-cor-ball').style.boxShadow = `0 0 20px ${corSorteada}`;
+        document.getElementById('overlay-bg').style.display = 'block';
+        document.getElementById('res-modal').style.display = 'block';
     }
 
     function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
@@ -164,7 +196,11 @@
         document.getElementById('s-display').innerText = state.s.toFixed(2);
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
-    function abrirM() { document.getElementById('overlay-bg').style.display='block'; }
+    
+    // Funções modais de PIX/Saque omitidas para manter o código limpo, 
+    // mas os botões de DEPOSITAR/SAQUE continuam chamando elas.
+    function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
+    function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
 </script>
 </body>
 </html>
