@@ -22,11 +22,11 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// TIMER DO JOGO - AJUSTADO PARA 30 SEGUNDOS
+// TIMER DO JOGO - AGORA FIXADO EM 30 SEGUNDOS
 let t = 30;
 setInterval(() => { 
     if(t > 0) t--; 
-    else t = 30; 
+    else t = 30; // Quando chega em 0, volta para 30 e o front dispara a roleta
 }, 1000);
 
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
@@ -41,6 +41,7 @@ app.post('/auth/login', async (req, res) => {
 // --- SALVAR APOSTAS (DE 1 EM 1 REAL) ---
 app.post('/api/save-saldo', async (req, res) => {
     try {
+        // Recebe o novo saldo e as apostas acumuladas de 1 em 1 do front
         await User.findOneAndUpdate({ user: req.body.user }, { 
             saldo: req.body.saldo, 
             bets: req.body.bets 
@@ -55,19 +56,20 @@ app.post('/api/spin', async (req, res) => {
         const u = await User.findOne({ user: req.body.user });
         if (!u) return res.json({ success: false });
 
-        // Identifica a cor onde o usuário apostou MENOS para garantir lucro
+        // SISTEMA ANTIBANCA: Escolhe a cor com MENOR valor apostado
         let menorValor = Math.min(...u.bets);
         let coresPossiveis = [];
         u.bets.forEach((v, i) => { if (v === menorValor) coresPossiveis.push(i); });
 
+        // Sorteia o alvo entre as cores que dão lucro/menor prejuízo
         const alvo = coresPossiveis[Math.floor(Math.random() * coresPossiveis.length)];
         
-        // Pagamento de 5x o valor apostado na cor (como é de 1 em 1, fica fácil controlar)
+        // Pagamento de 5x o valor apostado na cor sorteada (cada clique foi 1 real)
         const ganho = Number((u.bets[alvo] * 5).toFixed(2));
         const nS = Number((u.saldo + ganho).toFixed(2));
         const nG = Number((u.ganhos + ganho).toFixed(2));
 
-        // Zera as apostas para o próximo round
+        // ATUALIZA SALDO E ZERA AS APOSTAS PARA O PRÓXIMO CICLO DE 30s
         await User.findOneAndUpdate(
             { user: u.user }, 
             { $set: { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] } }
