@@ -12,14 +12,14 @@ const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa93
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "76811867";
 
-mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO - REGRAS DE SAQUE ATIVAS"));
+mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO - REGRAS DE SAQUE E DEPÓSITO ATIVAS"));
 
 // BANCO DE DADOS
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     saldo: { type: Number, default: 0.00 },
-    saldoGanhos: { type: Number, default: 0.00 }, // Apenas este saldo pode ser sacado
+    saldoGanhos: { type: Number, default: 0.00 }, // SÓ ESTE SALDO PODE SER SACADO
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0] }
 }));
 
@@ -40,25 +40,19 @@ let tempo = 30;
 setInterval(() => { if(tempo > 0) tempo--; else tempo = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempo }));
 
-// SALVAR DADOS (QUANDO O USER CLICA NAS CORES)
+// SALVAR DADOS
 app.post('/api/save-saldo', async (req, res) => {
-    const u = await User.findOne({ user: req.body.user });
-    if(u) {
-        // Se o usuário gasta saldo para apostar, tiramos proporcionalmente do saldo total
-        await User.findOneAndUpdate({ user: req.body.user }, { 
-            saldo: req.body.saldo, 
-            bets: req.body.bets 
-        });
-    }
+    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
     res.json({ success: true });
 });
 
-// GERAR PIX (DEPÓSITO MÍNIMO 10)
+// GERAR PIX (DEPÓSITO MÍNIMO R$ 10 COM MENSAGEM)
 app.post('/gerar-pix', (req, res) => {
     const valorDepo = Number(req.body.valor);
     
-    if(valorDepo < 10) {
-        return res.json({ success: false, msg: "Depósito mínimo é R$ 10" });
+    // REGRA DEPÓSITO MÍNIMO
+    if(!valorDepo || valorDepo < 10) {
+        return res.json({ success: false, msg: "O valor mínimo de depósito é R$ 10" });
     }
 
     const postData = JSON.stringify({
@@ -87,72 +81,62 @@ app.post('/gerar-pix', (req, res) => {
                 const r = JSON.parse(b);
                 if (r.point_of_interaction) {
                     res.json({ success: true, qr: r.point_of_interaction.transaction_data.qr_code_base64, code: r.point_of_interaction.transaction_data.qr_code });
-                } else { res.json({ success: false }); }
-            } catch (e) { res.json({ success: false }); }
+                } else { res.json({ success: false, msg: "Erro ao gerar PIX" }); }
+            } catch (e) { res.json({ success: false, msg: "Erro no servidor de pagamento" }); }
         });
     });
     mpReq.write(postData);
     mpReq.end();
 });
 
-// SOLICITAR SAQUE (MÍNIMO 20 E SÓ DE GANHOS)
+// SOLICITAR SAQUE (MÍNIMO 20 E SÓ GANHOS)
 app.post('/api/saque', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     const valorSaque = parseFloat(req.body.valor);
 
     if (!u) return res.json({ success: false, msg: "Usuário não encontrado" });
 
-    // REGRAS: Mínimo 20 e deve ter saldoGanhos suficiente
+    // REGRA SAQUE MÍNIMO R$ 20
     if (valorSaque < 20) {
         return res.json({ success: false, msg: "O saque mínimo é R$ 20,00" });
     }
 
+    // TRAVA: SÓ SACA O QUE GANHOU
     if (u.saldoGanhos < valorSaque) {
         return res.json({ success: false, msg: "Você só pode sacar valores ganhos em jogo!" });
     }
 
-    // Se passou, desconta de ambos os saldos
-    const novoSaldoTotal = Number((u.saldo - valorSaque).toFixed(2));
-    const novoSaldoGanhos = Number((u.saldoGanhos - valorSaque).toFixed(2));
+    const nS = Number((u.saldo - valorSaque).toFixed(2));
+    const nSG = Number((u.saldoGanhos - valorSaque).toFixed(2));
 
-    await User.findOneAndUpdate(
-        { user: u.user }, 
-        { $set: { saldo: novoSaldoTotal, saldoGanhos: novoSaldoGanhos } }
-    );
-
-    const novoSaque = new Saque({ user: u.user, valor: valorSaque, pix: req.body.pix });
-    await novoSaque.save();
-
+    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, saldoGanhos: nSG } });
+    await new Saque({ user: u.user, valor: valorSaque, pix: req.body.pix }).save();
     res.json({ success: true });
 });
 
-// GIRO CONFIGURADO
+// GIRO CONFIGURADO (APOSTA 1 -> GANHA 5)
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
 
     const totalApostado = u.bets.reduce((a, b) => a + b, 0);
-    
     let menor = Math.min(...u.bets);
     let opcoes = [];
     u.bets.forEach((v, i) => { if (v === menor) opcoes.push(i); });
 
     const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
     
+    // Multiplicador 5x
     const ganho = Number((u.bets[alvo] * 5).toFixed(2));
     const lucroRodada = totalApostado - ganho;
 
     await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
     
-    // O ganho do jogo vai para o Saldo Total E para o Saldo de Ganhos (Sacável)
+    // O prêmio vai para o saldo sacável (saldoGanhos)
     const nS = Number((u.saldo + ganho).toFixed(2));
     const nSG = Number((u.saldoGanhos + ganho).toFixed(2));
     
-    await User.findOneAndUpdate(
-        { user: u.user }, 
-        { $set: { saldo: nS, saldoGanhos: nSG, bets: [0,0,0,0,0,0,0,0] } }
-    );
-
+    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, saldoGanhos: nSG, bets: [0,0,0,0,0,0,0,0] } });
     res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
@@ -171,9 +155,9 @@ app.post('/api/admin/pagar-saque', async (req, res) => {
     res.json({ success: true });
 });
 
-// BÔNUS ADMIN (Não vai para saldoGanhos, logo não é sacável)
 app.post('/api/admin/bonus', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
+    // BÔNUS vai para o saldo comum, mas NÃO para saldoGanhos (não é sacável direto)
     await User.findOneAndUpdate({ user: req.body.user }, { $inc: { saldo: req.body.valor } });
     res.json({ success: true });
 });
