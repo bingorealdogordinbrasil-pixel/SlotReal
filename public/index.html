@@ -18,7 +18,7 @@
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
         .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.75); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(4px); }
-        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; border: 1px solid rgba(212, 175, 55, 0.1); }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; }
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
         
@@ -46,7 +46,7 @@
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <div>
                 <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
-                <button onclick="sacarUrubu()" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE URUBU</button>
+                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE URUBU</button>
             </div>
         </div>
         <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">00:30</h2></div>
@@ -88,13 +88,13 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSfx(freq, type, dur, vol = 0.1) {
         try {
-            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            g.gain.setValueAtTime(vol, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
-            osc.connect(g); g.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+            osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + dur);
-        } catch(e){}
+        } catch(e) {}
     }
 
     function alternarAuth() { isLogin = !isLogin; document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; }
@@ -109,22 +109,12 @@
     function iniciar() {
         document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        
-        // AJUSTE: Só uma de cada cor no tabuleiro
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
-            const posNoMapa = MAP.indexOf(i); 
-            
-            // Verifica se a posição no mapa corresponde ao primeiro slot de cada cor (0 a 9)
-            if(posNoMapa !== -1 && posNoMapa < 10) { 
-                c.style.background = CORES[posNoMapa]; 
-                c.innerText = 'R$5'; 
-            } else {
-                c.style.opacity = '0.05'; // Outras células do caminho ficam transparentes
-            }
+            const p = MAP.indexOf(i); 
+            if(p !== -1) { c.style.background = CORES[p % 10]; c.innerText = 'R$5'; } else { c.style.opacity = '0.05'; }
             g.appendChild(c);
         }
-
         const area = document.getElementById('bet-area'); area.innerHTML = '';
         CORES.forEach((c, i) => {
             const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
@@ -150,28 +140,27 @@
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
+        let targetPos = -1;
+        for(let i = 0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPos = i; break; } }
         
-        // O alvo agora será sempre um dos 10 primeiros índices do MAP (onde as cores estão)
-        let targetPos = d.corAlvo; 
-        let totalSteps = (MAP.length * 3) + targetPos; 
+        let totalSteps = (MAP.length * 5) + targetPos; 
         let currentStep = 0;
 
         const loop = () => {
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
-            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
+            const prev = document.getElementById(`c-${MAP[state.idx]}`);
+            prev.style.boxShadow = 'none'; prev.style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
             const el = document.getElementById(`c-${MAP[state.idx]}`);
-            
-            // Destaca a célula atual da roleta
-            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff'; 
-            el.style.transform = 'scale(1.35)';
-            
-            playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
+            el.style.boxShadow = '0 0 40px #fff, 0 0 80px ' + el.style.background;
+            el.style.transform = 'scale(1.4)'; el.style.zIndex = '10';
+            playSfx(100 + (currentStep * 1.5), 'sine', 0.04, 0.05);
+
             if(++currentStep < totalSteps) {
-                let dly = 40; let rem = totalSteps - currentStep;
-                if (rem < 15) dly += (15 - rem) * 35; setTimeout(loop, dly);
+                let progress = currentStep / totalSteps;
+                let speed = (progress < 0.2) ? 80 - (progress * 200) : (progress < 0.7) ? 40 : 40 + Math.pow((progress - 0.7) * 10, 2.5) * 15;
+                setTimeout(loop, Math.max(30, speed));
             } else { 
-                setTimeout(() => { mostrarFim(d.valorGanho, CORES[d.corAlvo]); state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; }, 1500); 
+                setTimeout(() => { mostrarFim(d.valorGanho, CORES[d.corAlvo]); state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; }, 1200);
             }
         }; loop();
     }
@@ -179,7 +168,7 @@
     async function gerarPix() {
         const val = document.getElementById('v-pix').value;
         const btn = document.getElementById('btn-gerar-pix');
-        btn.innerText = "GERANDO..."; btn.disabled = true;
+        btn.innerText = "PROCESSANDO..."; btn.disabled = true;
         try {
             const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:val}) });
             const d = await res.json();
@@ -189,16 +178,15 @@
                 document.getElementById('res-pix').style.display='block';
                 btn.innerText = "QR CODE PRONTO";
             } else {
-                alert("ERRO: " + (d.message || "Verifique o Token no Servidor"));
+                alert("ERRO: " + (d.message || "Token Inválido"));
                 btn.innerText = "GERAR QR CODE"; btn.disabled = false;
             }
         } catch(e) { alert("Erro de conexão"); btn.disabled = false; }
     }
 
     function copiarPix() { navigator.clipboard.writeText(pixCopiaCola); alert("Pix Copiado!"); }
-    function sacarUrubu() { alert("Saque solicitado para conta cadastrada!"); }
     function mostrarFim(v, cor) {
-        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
+        document.getElementById('res-titulo').innerText = v > 0 ? "VITÓRIA!" : "PERDEU";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
         document.getElementById('res-cor-ball').style.backgroundColor = cor;
         document.getElementById('overlay-bg').style.display = 'block'; document.getElementById('res-modal').style.display = 'block';
