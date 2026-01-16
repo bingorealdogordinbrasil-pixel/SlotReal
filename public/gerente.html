@@ -1,95 +1,66 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>SlotReal - Painel Gerente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerência SlotReal</title>
     <style>
-        body { background: #050505; color: #eee; font-family: sans-serif; margin: 0; }
-        .sidebar { width: 250px; background: #111; height: 100vh; position: fixed; border-right: 1px solid #d4af37; padding: 20px; }
-        .content { margin-left: 290px; padding: 20px; }
-        .card { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { border-bottom: 2px solid #d4af37; padding: 10px; text-align: left; color: #d4af37; }
-        td { padding: 10px; border-bottom: 1px solid #222; }
-        input, button { padding: 8px; border-radius: 5px; border: 1px solid #d4af37; background: #000; color: #fff; }
-        .btn-edit { background: #d4af37; color: #000; cursor: pointer; font-weight: bold; }
-        .stats { display: flex; gap: 20px; }
-        .stat-box { flex: 1; background: #111; padding: 15px; border-radius: 10px; border-left: 5px solid #d4af37; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+        .card { background: #111; border: 1px solid #d4af37; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        button { background: #d4af37; border: none; padding: 10px; border-radius: 5px; font-weight: bold; }
+        input { padding: 10px; border-radius: 5px; margin: 5px; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2 style="color:#d4af37">GERENTE GOLD</h2>
-        <hr border="0.1">
-        <p>Dashboard</p>
-        <p>Usuários</p>
-        <p>Configurações</p>
-        <button onclick="carregarDados()" class="btn-edit" style="width: 100%">ATUALIZAR DADOS</button>
+    <h1>Painel do Gerente</h1>
+    <div id="login-admin">
+        <input type="password" id="pass-admin" placeholder="Senha do Gerente">
+        <button onclick="carregar()">ACESSAR PAINEL</button>
     </div>
 
-    <div class="content">
-        <div class="stats">
-            <div class="stat-box">Saldo Total Usuários: <br><b id="total-saldo" style="color:#2ecc71">R$ 0.00</b></div>
-            <div class="stat-box">Total de Contas: <br><b id="total-users">0</b></div>
-            <div class="stat-box">Ganhos da Casa (Estimado): <br><b id="lucro-casa" style="color:#d4af37">R$ 0.00</b></div>
-        </div>
-
-        <div class="card">
-            <h3>Lista de Jogadores</h3>
-            <table id="tabela-users">
-                <thead>
-                    <tr>
-                        <th>Usuário</th>
-                        <th>Email</th>
-                        <th>Saldo (R$)</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="lista-corpo"></tbody>
-            </table>
-        </div>
+    <div id="painel" style="display:none">
+        <div id="lista-usuarios"></div>
     </div>
 
     <script>
-        async function carregarDados() {
-            const res = await fetch('/admin/users');
-            const data = await res.json();
-            
-            const corpo = document.getElementById('lista-corpo');
-            corpo.innerHTML = '';
-            let totalS = 0;
-
-            data.forEach(u => {
-                totalS += u.saldo;
-                corpo.innerHTML += `
-                    <tr>
-                        <td>${u.user}</td>
-                        <td>${u.email || 'N/A'}</td>
-                        <td><input type="number" id="s-${u.user}" value="${u.saldo.toFixed(2)}"></td>
-                        <td>
-                            <button class="btn-edit" onclick="updateSaldo('${u.user}')">SALVAR</button>
-                            <button style="background:red; color:white" onclick="deletar('${u.user}')">BANIR</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            document.getElementById('total-users').innerText = data.length;
-            document.getElementById('total-saldo').innerText = `R$ ${totalS.toFixed(2)}`;
-        }
-
-        async function updateSaldo(username) {
-            const novoSaldo = document.getElementById(`s-${username}`).value;
-            await fetch('/admin/update-saldo', {
+        let senhaGlobal = "";
+        async function carregar() {
+            senhaGlobal = document.getElementById('pass-admin').value;
+            const res = await fetch('/api/admin/list', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user: username, saldo: Number(novoSaldo) })
+                body: JSON.stringify({ senha: senhaGlobal })
             });
-            alert('Saldo atualizado!');
-            carregarDados();
+            const d = await res.json();
+            if(d.success) {
+                document.getElementById('login-admin').style.display = 'none';
+                document.getElementById('painel').style.display = 'block';
+                const list = document.getElementById('lista-usuarios');
+                list.innerHTML = "";
+                d.users.forEach(u => {
+                    list.innerHTML += `
+                        <div class="card">
+                            <div><b>${u.user}</b><br>Saldo: R$ ${u.saldo.toFixed(2)}</div>
+                            <div>
+                                <input type="number" id="v-${u.user}" value="10" style="width:50px">
+                                <button onclick="addBonus('${u.user}')">DAR BÔNUS</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else { alert("Senha errada, meu filho!"); }
         }
 
-        carregarDados();
+        async function addBonus(user) {
+            const v = document.getElementById(`v-${user}`).value;
+            await fetch('/api/admin/bonus', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ senha: senhaGlobal, user: user, valor: v })
+            });
+            alert("Bônus enviado!");
+            carregar();
+        }
     </script>
 </body>
 </html>
