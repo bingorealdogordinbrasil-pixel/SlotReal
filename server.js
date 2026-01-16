@@ -22,7 +22,7 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// ALTERADO PARA 30 SEGUNDOS
+// ALTERADO DE 120 PARA 30 SEGUNDOS
 let t = 30;
 setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
