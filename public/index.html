@@ -46,7 +46,6 @@
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <div>
                 <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
-                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE</button>
             </div>
         </div>
         <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">00:30</h2></div>
@@ -72,16 +71,7 @@
         <p onclick="fecharM()" style="color:#e74c3c; cursor:pointer; margin-top:15px; font-size: 13px;">FECHAR</p>
     </div>
 
-    <div id="m-saque" class="modal">
-        <h3 style="color:#d4af37">REALIZAR SAQUE</h3>
-        <input type="text" placeholder="Chave PIX">
-        <input type="number" placeholder="Valor">
-        <button class="btn-g" onclick="alert('Solicitado!')">SOLICITAR</button>
-        <p onclick="fecharM()" style="color:#e74c3c; cursor:pointer; margin-top:15px; font-size: 13px;">CANCELAR</p>
-    </div>
-
     <div id="res-modal" class="modal">
-        <div id="res-icon" style="font-size:50px;">💰</div>
         <h2 id="res-titulo">GANHOU!</h2>
         <div id="res-cor-ball" class="cor-resultado"></div>
         <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold; margin-bottom:15px;">R$ 0.00</div>
@@ -94,13 +84,27 @@
     const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
     const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
 
+    // --- SISTEMA DE SOM (RESTAURADO) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSfx(freq, type, dur, vol = 0.1) {
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
+        } catch(e) {}
+    }
+
     function alternarAuth() { isLogin = !isLogin; document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; }
 
     async function auth() {
         const u = document.getElementById('u').value, p = document.getElementById('p').value, e = document.getElementById('email').value;
         const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p, email:e}) });
         const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo; state.g = d.ganhos; state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; iniciar(); } else alert("Erro!");
+        if(d.success) { state.u = d.user; state.s = d.saldo; iniciar(); } else alert("Erro!");
     }
 
     function iniciar() {
@@ -118,7 +122,7 @@
             b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
             b.onclick = async () => { 
                 if(!bloqueado && state.s >= 1){ 
-                    state.b[i]++; state.s--; atualizar(); 
+                    playSfx(400, 'sine', 0.1); state.b[i]++; state.s--; atualizar(); 
                     await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
                 } 
             };
@@ -137,35 +141,26 @@
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
-        let targetIdxNoMapa = -1;
-        for(let i = 0; i < MAP.length; i++) { if((i % 10) === d.corAlvo) { targetIdxNoMapa = i; break; } }
-        let totalSteps = (MAP.length * 3) + targetIdxNoMapa; let currentStep = 0;
+        let targetIdx = -1;
+        for(let i = 0; i < MAP.length; i++) { if((i % 10) === d.corAlvo) { targetIdx = i; break; } }
+        let totalSteps = (MAP.length * 3) + targetIdx; let currentStep = 0;
         const loop = () => {
             document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
             document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
             const el = document.getElementById(`c-${MAP[state.idx]}`);
-            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff'; el.style.transform = 'scale(1.35)';
-            if(++currentStep < totalSteps) { setTimeout(loop, 40 + (currentStep > totalSteps - 15 ? (15 - (totalSteps - currentStep)) * 35 : 0)); } 
-            else { setTimeout(() => { mostrarFim(d.valorGanho, CORES[d.corAlvo]); state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false; }, 1500); }
+            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff';
+            el.style.transform = 'scale(1.35)';
+            playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05); // SOM DO GIRO
+            if(++currentStep < totalSteps) {
+                setTimeout(loop, 40 + (currentStep > totalSteps - 15 ? (currentStep - (totalSteps - 15)) * 30 : 0));
+            } else { 
+                setTimeout(() => { mostrarFim(d.valorGanho, CORES[d.corAlvo]); state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false; }, 1000); 
+            }
         }; loop();
     }
 
-    function mostrarFim(v, corS) {
-        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
-        document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
-        document.getElementById('res-cor-ball').style.backgroundColor = corS;
-        document.getElementById('overlay-bg').style.display = 'block'; document.getElementById('res-modal').style.display = 'block';
-    }
-
-    function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
-    function atualizar() { 
-        document.getElementById('s-display').innerText = state.s.toFixed(2);
-        state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
-    }
-    
-    // FUNÇÕES PIX RESTAURADAS
-    async function gerarPix() { 
+    async function gerarPix() {
         const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
         const d = await res.json();
         if(d.success) {
@@ -174,10 +169,13 @@
             document.getElementById('res-pix').style.display='block';
         }
     }
+
     function copiarPix() { const i = document.getElementById('pix-copy'); i.select(); document.execCommand('copy'); alert("Copiado!"); }
-    
+    function mostrarFim(v, corS) { document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`; document.getElementById('res-cor-ball').style.backgroundColor = corS; document.getElementById('overlay-bg').style.display = 'block'; document.getElementById('res-modal').style.display = 'block'; }
+    function fecharRes() { fecharM(); }
     function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
     function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
+    function atualizar() { document.getElementById('s-display').innerText = state.s.toFixed(2); state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; }); }
 </script>
 </body>
 </html>
