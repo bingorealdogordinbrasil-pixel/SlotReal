@@ -46,7 +46,7 @@
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <div>
                 <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
-                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE URUBU</button>
+                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SOLICITAR SAQUE</button>
             </div>
         </div>
         <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">02:00</h2></div>
@@ -67,6 +67,27 @@
         <div id="res-cor-ball" class="cor-resultado"></div>
         <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold; margin-bottom:15px;">R$ 0.00</div>
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
+    </div>
+
+    <div id="m-saque" class="modal">
+        <h3 style="color:#d4af37">REALIZAR SAQUE</h3>
+        <p style="font-size: 14px;">Ganhos: <b id="g-display" style="color:#2ecc71">0.00</b></p>
+        <input type="text" placeholder="Chave PIX (CPF/E-mail)">
+        <input type="number" id="v-saque" placeholder="Valor do Saque">
+        <button class="btn-g" onclick="alert('Pedido de saque enviado para análise!')">SOLICITAR AGORA</button>
+        <p onclick="fecharM()" style="color:#e74c3c; cursor:pointer; margin-top:15px; font-size: 13px;">CANCELAR</p>
+    </div>
+
+    <div id="m-pix" class="modal">
+        <h3 style="color:#d4af37">DEPOSITAR VIA PIX</h3>
+        <input type="number" id="v-pix" placeholder="Valor (R$)" value="20">
+        <button class="btn-g" onclick="gerarPix()">GERAR CÓDIGO</button>
+        <div id="res-pix" style="display:none; margin-top:15px; background:#fff; padding:10px; border-radius:10px;">
+            <img id="q-img" style="width:150px; height:150px; display:block; margin:0 auto;">
+            <input type="text" id="pix-copy" readonly style="width:100%; font-size:10px; color:#000; margin-top:5px; border:1px solid #ccc;">
+            <button class="btn-g" style="margin-top:10px; font-size:11px;" onclick="copiarPix()">COPIAR PIX COPIA E COLA</button>
+        </div>
+        <p onclick="fecharM()" style="color:#e74c3c; cursor:pointer; margin-top:15px; font-size: 13px;">FECHAR</p>
     </div>
 
 <script>
@@ -138,7 +159,6 @@
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
         
-        // SINCRONIA: Encontra qual índice do MAP bate com a cor sorteada pelo servidor
         let targetPosNoMapa = -1;
         for(let i = 0; i < MAP.length; i++) {
             if(i % 10 === d.corAlvo) {
@@ -194,11 +214,21 @@
     function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
     function atualizar() { 
         document.getElementById('s-display').innerText = state.s.toFixed(2);
+        if(document.getElementById('g-display')) document.getElementById('g-display').innerText = state.g.toFixed(2);
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
     
-    // Funções modais de PIX/Saque omitidas para manter o código limpo, 
-    // mas os botões de DEPOSITAR/SAQUE continuam chamando elas.
+    async function gerarPix() { 
+        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
+        const d = await res.json();
+        if(d.success) {
+            document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
+            document.getElementById('pix-copy').value = d.copia_e_cola;
+            document.getElementById('res-pix').style.display='block';
+        }
+    }
+
+    function copiarPix() { const i = document.getElementById('pix-copy'); i.select(); document.execCommand('copy'); alert("Copiado!"); }
     function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
     function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
 </script>
