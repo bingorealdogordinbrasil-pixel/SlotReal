@@ -31,17 +31,17 @@
 
     <div id="tela-login">
         <div class="card-auth">
-            <h2 style="color:#d4af37">ENTRAR NO GOLD</h2>
+            <h2 style="color:#d4af37">LOGIN GOLD</h2>
             <input type="text" id="u" placeholder="Usuário">
             <input type="password" id="p" placeholder="Senha">
-            <button class="btn-g" onclick="auth()">ENTRAR AGORA</button>
+            <button class="btn-g" onclick="auth()">ENTRAR</button>
         </div>
     </div>
 
     <div id="tela-jogo" style="display:none">
         <div class="top-bar">
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
-            <button class="btn-g" style="width:auto; padding:8px 15px;">SALDO PIX</button>
+            <button class="btn-g" style="width:auto; padding:8px 15px;">PIX</button>
         </div>
 
         <h2 id="timer" style="color:#d4af37; font-size: 50px; margin:20px 0;">02:00</h2>
@@ -79,12 +79,11 @@
         
         const g = document.getElementById('grid');
         g.innerHTML = '';
-        // Cria 100 itens para a roleta girar bastante
         for(let i=0; i < 100; i++){
             const c = document.createElement('div');
             c.className = 'cell';
             c.style.background = CORES[i % 10];
-            c.innerText = 'R$ 5';
+            c.innerText = 'R$ 1';
             g.appendChild(c);
         }
 
@@ -94,7 +93,7 @@
             b.className = 'btn-bet';
             b.style.borderBottomColor = c;
             b.innerHTML = `COR ${i}<br><span class="v-bet" id="vb-${i}">0</span>`;
-            b.onclick = () => apostar(i); // CADA CLIQUE ADICIONA NAQUELA COR
+            b.onclick = () => apostar(i); 
             area.appendChild(b);
         });
         atualizar();
@@ -102,9 +101,9 @@
     }
 
     async function apostar(i) {
-        if(bloqueado || state.s < 5) return;
-        state.b[i] += 5; // Soma +5 na cor escolhida
-        state.s -= 5; // Tira do saldo
+        if(bloqueado || state.s < 1) return; // AGORA VERIFICA SE TEM PELO MENOS 1 REAL
+        state.b[i] += 1; // ADICIONA 1 REAL POR CLIQUE
+        state.s -= 1; // TIRA 1 REAL DO SALDO
         atualizar();
         await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})});
     }
@@ -114,7 +113,6 @@
         const d = await res.json();
         document.getElementById('timer').innerText = `${Math.floor(d.segundos/60)}:${(d.segundos%60).toString().padStart(2,'0')}`;
 
-        // GATILHO AUTOMÁTICO NOS 30 SEGUNDOS
         if(d.segundos === 30 && !rodandoAgora) {
             rodar();
         }
@@ -135,7 +133,7 @@
         setTimeout(() => {
             mostrarFim(d.valorGanho);
             state.s = d.novoSaldo;
-            state.b.fill(0); // Zera as apostas visuais para o próximo round
+            state.b.fill(0); 
             atualizar();
             setTimeout(() => {
                 track.style.transition = "none";
@@ -146,7 +144,7 @@
     }
 
     function mostrarFim(v) {
-        document.getElementById('res-titulo').innerText = v > 0 ? "VOCÊ GANHOU!" : "VOCÊ PERDEU";
+        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
         document.getElementById('overlay-bg').style.display = 'block';
         document.getElementById('res-modal').style.display = 'block';
