@@ -7,11 +7,12 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// TOKEN E MONGO QUE VOCÊ JÁ USA
+// CONFIGURAÇÕES DO GERENTE
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
+const SENHA_MESTRA = "OURO123"; // Mude para sua senha de preferência
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA RESTAURADO E ON"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA COM GERENTE ATIVO"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -22,10 +23,12 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
+// TIMER DO JOGO
 let t = 120;
 setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
+// --- ROTAS DE AUTENTICAÇÃO ---
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
@@ -39,30 +42,51 @@ app.post('/auth/register', async (req, res) => {
     } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
 });
 
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
-    res.json({ success: true });
-});
-
+// --- LÓGICA DO SPIN (SUBSTITUÍDA PELO MODO GERENTE) ---
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
         if (!u) return res.json({ success: false });
 
+        // Identifica as cores onde o usuário apostou MENOS (Garante o lucro da casa)
         let menorValor = Math.min(...u.bets);
         let coresPossiveis = [];
         u.bets.forEach((v, i) => { if (v === menorValor) coresPossiveis.push(i); });
 
         const alvo = coresPossiveis[Math.floor(Math.random() * coresPossiveis.length)];
-        const ganho = u.bets[alvo] * 5;
+        
+        // Se o usuário ganhar na cor de menor aposta, paga 4.5x (Gerente retém 0.5x)
+        const ganho = Number((u.bets[alvo] * 4.5).toFixed(2));
         const nS = Number((u.saldo + ganho).toFixed(2));
         const nG = Number((u.ganhos + ganho).toFixed(2));
 
-        await User.findOneAndUpdate({ user: u.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
+        await User.findOneAndUpdate(
+            { user: u.user }, 
+            { $set: { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] } }
+        );
+
         res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG, valorGanho: ganho });
     } catch (e) { res.json({ success: false }); }
 });
 
+// --- ROTAS DO PAINEL GERENTE ---
+app.get('/admin/users', async (req, res) => {
+    const users = await User.find({}, { pass: 0 });
+    res.json(users);
+});
+
+app.post('/admin/update-saldo', async (req, res) => {
+    const { user, saldo } = req.body;
+    await User.findOneAndUpdate({ user: user }, { saldo: saldo });
+    res.json({ success: true });
+});
+
+app.post('/api/save-saldo', async (req, res) => {
+    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
+    res.json({ success: true });
+});
+
+// --- MERCADO PAGO ---
 app.post('/gerar-pix', (req, res) => {
     const postData = JSON.stringify({
         transaction_amount: Number(req.body.valor),
@@ -71,7 +95,6 @@ app.post('/gerar-pix', (req, res) => {
         payer: { 
             email: `${req.body.userLogado}@gmail.com`, 
             first_name: req.body.userLogado, 
-            last_name: "User", 
             identification: { type: "CPF", number: "19119119100" } 
         }
     });
@@ -80,10 +103,7 @@ app.post('/gerar-pix', (req, res) => {
         hostname: 'api.mercadopago.com', 
         path: '/v1/payments', 
         method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${MP_TOKEN}`, 
-            'Content-Type': 'application/json' 
-        }
+        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json' }
     };
 
     const mpReq = https.request(options, (mpRes) => {
@@ -92,20 +112,14 @@ app.post('/gerar-pix', (req, res) => {
         mpRes.on('end', () => {
             try {
                 const r = JSON.parse(b);
-                if (r.point_of_interaction && r.point_of_interaction.transaction_data) {
-                    res.json({ 
-                        success: true, 
-                        imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, 
-                        copia_e_cola: r.point_of_interaction.transaction_data.qr_code 
-                    });
-                } else {
-                    res.json({ success: false, message: "Erro no MP" });
-                }
+                res.json({ 
+                    success: true, 
+                    imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, 
+                    copia_e_cola: r.point_of_interaction.transaction_data.qr_code 
+                });
             } catch(e) { res.json({ success: false }); }
         });
     });
-    
-    mpReq.on('error', (err) => res.json({ success: false }));
     mpReq.write(postData); 
     mpReq.end();
 });
