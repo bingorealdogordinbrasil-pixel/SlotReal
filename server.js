@@ -21,7 +21,7 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// TIMER AJUSTADO PARA 30 SEGUNDOS
+// TIMER AJUSTADO EXATAMENTE PARA 30 SEGUNDOS
 let t = 30;
 setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
@@ -95,6 +95,7 @@ app.post('/gerar-pix', (req, res) => {
                         copia_e_cola: r.point_of_interaction.transaction_data.qr_code 
                     });
                 } else {
+                    console.error("ERRO MP DETALHADO:", r); // Ajuda a debugar o erro da imagem
                     res.json({ success: false, message: r.message });
                 }
             } catch(e) { res.json({ success: false }); }
