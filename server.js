@@ -10,9 +10,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // CONFIGURAÇÕES DO GERENTE
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-const SENHA_MESTRA = "OURO123"; // Mude para sua senha de preferência
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA COM GERENTE ATIVO"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SERVIDOR ON - CICLO 30 SEG"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -23,43 +22,52 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// TIMER DO JOGO
-let t = 120;
-setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
+// TIMER DO JOGO - AJUSTADO PARA 30 SEGUNDOS
+let t = 30;
+setInterval(() => { 
+    if(t > 0) t--; 
+    else t = 30; 
+}, 1000);
+
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
-// --- ROTAS DE AUTENTICAÇÃO ---
+// --- LOGIN ---
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
     else res.json({ success: false, message: "Dados incorretos" });
 });
 
-app.post('/auth/register', async (req, res) => {
+// --- SALVAR APOSTAS (DE 1 EM 1 REAL) ---
+app.post('/api/save-saldo', async (req, res) => {
     try {
-        const novo = await User.create({ user: req.body.user, pass: req.body.pass, email: req.body.email });
-        res.json({ success: true, user: novo.user, saldo: 0, ganhos: 0, bets: [0,0,0,0,0,0,0,0,0,0] });
-    } catch (e) { res.json({ success: false, message: "Usuário já existe" }); }
+        await User.findOneAndUpdate({ user: req.body.user }, { 
+            saldo: req.body.saldo, 
+            bets: req.body.bets 
+        });
+        res.json({ success: true });
+    } catch (e) { res.json({ success: false }); }
 });
 
-// --- LÓGICA DO SPIN (SUBSTITUÍDA PELO MODO GERENTE) ---
+// --- LÓGICA DO GIRO (SPIN) ---
 app.post('/api/spin', async (req, res) => {
     try {
         const u = await User.findOne({ user: req.body.user });
         if (!u) return res.json({ success: false });
 
-        // Identifica as cores onde o usuário apostou MENOS (Garante o lucro da casa)
+        // Identifica a cor onde o usuário apostou MENOS para garantir lucro
         let menorValor = Math.min(...u.bets);
         let coresPossiveis = [];
         u.bets.forEach((v, i) => { if (v === menorValor) coresPossiveis.push(i); });
 
         const alvo = coresPossiveis[Math.floor(Math.random() * coresPossiveis.length)];
         
-        // Se o usuário ganhar na cor de menor aposta, paga 4.5x (Gerente retém 0.5x)
-        const ganho = Number((u.bets[alvo] * 4.5).toFixed(2));
+        // Pagamento de 5x o valor apostado na cor (como é de 1 em 1, fica fácil controlar)
+        const ganho = Number((u.bets[alvo] * 5).toFixed(2));
         const nS = Number((u.saldo + ganho).toFixed(2));
         const nG = Number((u.ganhos + ganho).toFixed(2));
 
+        // Zera as apostas para o próximo round
         await User.findOneAndUpdate(
             { user: u.user }, 
             { $set: { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] } }
@@ -67,23 +75,6 @@ app.post('/api/spin', async (req, res) => {
 
         res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG, valorGanho: ganho });
     } catch (e) { res.json({ success: false }); }
-});
-
-// --- ROTAS DO PAINEL GERENTE ---
-app.get('/admin/users', async (req, res) => {
-    const users = await User.find({}, { pass: 0 });
-    res.json(users);
-});
-
-app.post('/admin/update-saldo', async (req, res) => {
-    const { user, saldo } = req.body;
-    await User.findOneAndUpdate({ user: user }, { saldo: saldo });
-    res.json({ success: true });
-});
-
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
-    res.json({ success: true });
 });
 
 // --- MERCADO PAGO ---
