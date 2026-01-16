@@ -125,7 +125,7 @@
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        // VOLTOU PARA R$ 5 NO VISUAL DOS QUADRADOS
+        // CORRIGIDO: MOSTRANDO R$ 5 NOS QUADRADOS
         for(let i=0;i<1200;i++){
             const c=document.createElement('div'); c.className='cell'; 
             c.style.background=CORES[i%8]; c.innerText='R$ 5'; g.appendChild(c);
@@ -136,6 +136,7 @@
             d.style.borderBottomColor = c;
             d.innerHTML = `<span>OPÇÃO ${i+1}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
+                // CLIQUE GASTA R$ 1
                 if(state.s>=1 && !rodando){
                     if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
                     state.b[i]++; state.s--; updateUI();
