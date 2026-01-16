@@ -19,10 +19,11 @@
         .cell { min-width: 70px; height: 70px; margin: 0 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; flex-shrink: 0; font-size: 14px; }
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
 
-        .bet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 15px; }
+        /* Ajustado para 4 colunas para caber as 8 cores melhor */
+        .bet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 15px; }
         .bet-card { background: var(--card); border-radius: 10px; padding: 8px 4px; border: 1px solid #333; cursor: pointer; border-bottom: 4px solid transparent; transition: 0.2s; }
-        .bet-card span { font-size: 10px; opacity: 0.8; display: block; }
-        .bet-card b { display: block; color: var(--gold); font-size: 12px; margin-top: 4px; }
+        .bet-card span { font-size: 9px; opacity: 0.8; display: block; }
+        .bet-card b { display: block; color: var(--gold); font-size: 11px; margin-top: 4px; }
 
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 25px; border-radius: 20px; width: 280px; z-index: 200; border: 2px solid var(--gold); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 150; }
@@ -97,8 +98,10 @@
     </div>
 
 <script>
-    let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
-    const CORES = ['#FFF','#444','#FFD700','#00FF7F','#FF00FF','#FF4500','#1E90FF','#808080','#8B4513','#00FFFF'];
+    // Agora bets tem tamanho 8
+    let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
+    // Removidas cores escuras/laranjas, restaram 8 vibrantes
+    const CORES = ['#FFF','#FFD700','#00FF7F','#FF00FF','#FF4500','#1E90FF','#808080','#00FFFF'];
     const sClick = document.getElementById('s-click'), sSpin = document.getElementById('s-spin'), sWin = document.getElementById('s-win'), sLoss = document.getElementById('s-loss');
 
     function toast(m){ const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
@@ -115,7 +118,7 @@
         const d = await res.json();
         if(d.success) {
             if(type==='login') {
-                state.u=d.user; state.s=d.saldo; state.b=d.bets||[0,0,0,0,0,0,0,0,0,0];
+                state.u=d.user; state.s=d.saldo; state.b=d.bets && d.bets.length === 8 ? d.bets : [0,0,0,0,0,0,0,0];
                 initGame();
             } else { toast("Pronto!"); toggleA(false); }
         } else toast(d.msg || "Erro!");
@@ -125,25 +128,22 @@
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        // AQUI: MOSTRANDO R$ 10 NOS QUADRADOS
-        for(let i=0;i<1500;i++){
+        // Roleta com as 8 cores
+        for(let i=0;i<1200;i++){
             const c=document.createElement('div'); c.className='cell'; 
-            c.style.background=CORES[i%10]; c.innerText='R$ 10'; g.appendChild(c);
+            c.style.background=CORES[i%8]; c.innerText='R$ 10'; g.appendChild(c);
         }
         const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
             const d = document.createElement('div'); d.className='bet-card'; d.id=`card-${i}`;
             d.style.borderBottomColor = c;
-            d.innerHTML = `<span>OPÇÃO ${i}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
+            d.innerHTML = `<span>OPÇÃO ${i+1}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
-                // AQUI: CADA CLIQUE É R$ 1,00
                 if(state.s>=1 && !rodando){
                     if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
                     state.b[i]++; state.s--; updateUI();
                     fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
-                } else if(state.s < 1) {
-                    toast("Saldo insuficiente!");
-                }
+                } else if(state.s < 1) toast("Saldo insuficiente!");
             };
             area.appendChild(d);
         });
@@ -161,9 +161,9 @@
         if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); }
         const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
         const g = document.getElementById('grid');
-        let cur = Math.round(pos/90)%10, diff = d.corAlvo - cur;
-        if(diff <= 0) diff += 10;
-        pos += (60 + diff) * 90;
+        let cur = Math.round(pos/90)%8, diff = d.corAlvo - cur;
+        if(diff <= 0) diff += 8;
+        pos += (64 + diff) * 90;
         g.style.transform = `translateX(-${pos - 135}px)`;
         setTimeout(() => {
             if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
@@ -191,7 +191,7 @@
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
             document.getElementById('qr-area').style.display='block';
-        } else { toast("Erro!"); }
+        } else toast("Erro!");
     }
 
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
