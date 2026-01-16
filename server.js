@@ -1,4 +1,4 @@
-const express = require('express');
+Const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const https = require('https');
@@ -22,8 +22,9 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-let t = 120;
-setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
+// Alterado de 120 para 30 segundos
+let t = 30;
+setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
 app.post('/auth/login', async (req, res) => {
