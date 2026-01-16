@@ -8,36 +8,62 @@
     <style>
         :root { --gold: #d4af37; --bg: #0b0b0b; --card: #161616; --green: #2ecc71; }
         body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
+        
         .top-bar { background: rgba(17,17,17,0.98); padding: 12px 15px; display: flex; justify-content: space-between; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); align-items: center; }
         .balance-box { background: #000; border: 1px solid var(--gold); padding: 6px 12px; border-radius: 50px; color: var(--green); font-weight: bold; font-size: 14px; }
+        
         .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
         .btn-white { background: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
-        .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 90px; }
-        .cell { min-width: 70px; height: 70px; margin: 0 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; flex-shrink: 0; font-size: 12px; }
+
+        .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 90px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+        .cell { min-width: 70px; height: 70px; margin: 0 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; flex-shrink: 0; font-size: 14px; }
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
+
         .bet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 15px; }
-        .bet-card { background: var(--card); border-radius: 10px; padding: 8px 4px; border: 1px solid #333; cursor: pointer; transition: 0.2s; border-bottom: 4px solid transparent; }
-        .bet-card b { display: block; color: var(--gold); font-size: 11px; margin-top: 4px; }
+        .bet-card { background: var(--card); border-radius: 10px; padding: 8px 4px; border: 1px solid #333; cursor: pointer; border-bottom: 4px solid transparent; transition: 0.2s; }
+        .bet-card span { font-size: 10px; opacity: 0.8; display: block; }
+        .bet-card b { display: block; color: var(--gold); font-size: 12px; margin-top: 4px; }
+
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 25px; border-radius: 20px; width: 280px; z-index: 200; border: 2px solid var(--gold); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 150; }
+        input { width: 90%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; text-align: center; font-size: 16px; }
         #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 8px 20px; border-radius: 50px; font-weight: bold; display: none; z-index: 1000; }
     </style>
 </head>
 <body>
+    <audio id="s-click" src="click.mp3"></audio>
+    <audio id="s-spin" src="spin.mp3"></audio>
+    <audio id="s-win" src="win.mp3"></audio>
+    <audio id="s-loss" src="loss.mp3"></audio>
+
     <div id="toast"></div>
     <div class="overlay" id="ov" onclick="closeM()"></div>
 
     <div id="auth-screen" style="margin-top: 80px;">
-        <h2 style="color:var(--gold)">SLOTREAL</h2>
-        <input type="text" id="u" placeholder="Usuário" style="padding:10px; margin:5px;"><br>
-        <input type="password" id="p" placeholder="Senha" style="padding:10px; margin:5px;"><br>
-        <button class="btn-gold" onclick="handleAuth('login')">ENTRAR</button>
+        <div style="background: var(--card); padding: 30px; border-radius: 25px; border: 1px solid var(--gold); display: inline-block; width: 260px;">
+            <h2 style="color:var(--gold); margin:0 0 20px 0">SLOTREAL</h2>
+            <div id="login-box">
+                <input type="text" id="u" placeholder="Usuário">
+                <input type="password" id="p" placeholder="Senha">
+                <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('login')">ENTRAR</button>
+                <p onclick="toggleA(true)" style="font-size:12px; cursor:pointer; margin-top:20px">Cadastrar-se</p>
+            </div>
+            <div id="reg-box" style="display:none">
+                <input type="text" id="ru" placeholder="Novo Usuário">
+                <input type="password" id="rp" placeholder="Nova Senha">
+                <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('reg')">CRIAR CONTA</button>
+                <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Fazer Login</p>
+            </div>
+        </div>
     </div>
 
     <div id="game-screen" style="display:none">
         <div class="top-bar">
             <div class="balance-box">💰 R$ <span id="balance">0.00</span></div>
-            <button class="btn-gold" onclick="openM('pix-m')">DEPÓSITO</button>
+            <div style="display:flex; gap:8px">
+                <button class="btn-gold" onclick="openM('pix-m')">DEPÓSITO</button>
+                <button class="btn-white" onclick="openM('saque-m')">SAQUE</button>
+            </div>
         </div>
         <h1 id="timer" style="color:var(--gold); font-size:48px; margin:20px 0">00:30</h1>
         <div class="roleta-container">
@@ -47,26 +73,52 @@
         <div class="bet-grid" id="bet-grid"></div>
     </div>
 
+    <div class="modal" id="pix-m">
+        <h3 style="color:var(--gold); margin:0">DEPOSITAR</h3>
+        <input type="number" id="v-pix" value="20">
+        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
+        <div id="qr-area" style="display:none; margin-top:15px">
+            <img id="qr-img" style="width:140px; background:#fff; padding:5px; border-radius:10px">
+            <button class="btn-gold" style="width:100%; margin-top:10px; font-size:11px" onclick="copy()">COPIAR</button>
+        </div>
+    </div>
+
+    <div class="modal" id="saque-m">
+        <h3 style="color:var(--gold); margin:0">SAQUE</h3>
+        <input type="number" id="v-saq" placeholder="Valor (Mín. 20)">
+        <input type="text" id="c-pix" placeholder="Chave PIX">
+        <button class="btn-gold" style="width:100%" onclick="handleSaque()">SACAR</button>
+    </div>
+
     <div class="modal" id="win-m">
-        <h2 id="win-t"></h2>
-        <h1 id="win-v" style="color:var(--gold)"></h1>
-        <button class="btn-gold" onclick="closeM()">OK</button>
+        <h2 id="win-t" style="margin:0"></h2>
+        <h1 id="win-v" style="color:var(--gold); font-size:38px; margin:10px 0"></h1>
+        <button class="btn-gold" style="width:100%" onclick="closeM()">OK</button>
     </div>
 
 <script>
     let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
     const CORES = ['#FFF','#444','#FFD700','#00FF7F','#FF00FF','#FF4500','#1E90FF','#808080','#8B4513','#00FFFF'];
+    const sClick = document.getElementById('s-click'), sSpin = document.getElementById('s-spin'), sWin = document.getElementById('s-win'), sLoss = document.getElementById('s-loss');
 
     function toast(m){ const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
+    function toggleA(r){ document.getElementById('login-box').style.display=r?'none':'block'; document.getElementById('reg-box').style.display=r?'block':'none'; }
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
     async function handleAuth(type) {
-        const u = document.getElementById('u').value;
-        const p = document.getElementById('p').value;
-        const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p}) });
+        const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
+        const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
+        const res = await fetch(type==='login' ? '/auth/login' : '/auth/register', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p})
+        });
         const d = await res.json();
-        if(d.success) { state.u=d.user; state.s=d.saldo; state.b=d.bets||[0,0,0,0,0,0,0,0,0,0]; initGame(); }
+        if(d.success) {
+            if(type==='login') {
+                state.u=d.user; state.s=d.saldo; state.b=d.bets||[0,0,0,0,0,0,0,0,0,0];
+                initGame();
+            } else { toast("Pronto!"); toggleA(false); }
+        } else toast(d.msg || "Erro!");
     }
 
     function initGame() {
@@ -75,61 +127,76 @@
         const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=0;i<1500;i++){
             const c=document.createElement('div'); c.className='cell'; 
-            c.style.background=CORES[i%10]; c.innerText='R$ 0.50'; g.appendChild(c);
+            c.style.background=CORES[i%10]; c.innerText='R$ 5'; g.appendChild(c);
         }
         const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
             const d = document.createElement('div'); d.className='bet-card'; d.id=`card-${i}`;
             d.style.borderBottomColor = c;
-            d.innerHTML = `<span>OPÇÃO ${i}</span><b id="vb-${i}">R$ ${state.b[i].toFixed(2)}</b>`;
+            d.innerHTML = `<span>OPÇÃO ${i}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
-                if(state.s >= 0.50 && !rodando){
-                    state.b[i] = Number((state.b[i] + 0.50).toFixed(2));
-                    state.s = Number((state.s - 0.50).toFixed(2));
-                    updateUI();
+                if(state.s>=1 && !rodando){
+                    if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
+                    state.b[i]++; state.s--; updateUI();
                     fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
-                } else if(!rodando) { toast("Saldo insuficiente!"); }
+                }
             };
             area.appendChild(d);
         });
-        updateUI(); setInterval(sync, 800); 
+        updateUI(); setInterval(sync, 1000);
     }
 
     async function sync() {
-        try {
-            const res = await fetch('/api/tempo-real');
-            const d = await res.json();
-            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-            if((d.segundos >= 29 || d.segundos === 0) && !rodando) spin();
-        } catch(e) {}
+        const d = await (await fetch('/api/tempo-real')).json();
+        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+        if(d.segundos === 30 && !rodando) spin();
     }
 
     async function spin() {
-        if(rodando) return; rodando = true;
-        const res = await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})});
-        const d = await res.json();
-        if(!d.success) { rodando = false; return; }
+        rodando = true;
+        if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); }
+        const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
         const g = document.getElementById('grid');
-        let cur = Math.round(pos/90)%10; let diff = d.corAlvo - cur;
+        let cur = Math.round(pos/90)%10, diff = d.corAlvo - cur;
         if(diff <= 0) diff += 10;
         pos += (60 + diff) * 90;
         g.style.transform = `translateX(-${pos - 135}px)`;
         setTimeout(() => {
-            document.getElementById('win-t').innerText = d.valorGanho > 0 ? "GANHOU!" : "PERDEU";
+            if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
+            if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
+            document.getElementById('win-t').innerText = d.valorGanho>0?"GANHOU!":"PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             openM('win-m');
-            state.s = d.novoSaldo; state.b.fill(0); updateUI();
-            setTimeout(() => { rodando = false; }, 2000);
+            state.s=d.novoSaldo; state.b.fill(0); updateUI(); rodando=false;
         }, 6500);
     }
 
     function updateUI() {
         document.getElementById('balance').innerText = state.s.toFixed(2);
         state.b.forEach((v,i) => {
-            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = `R$ ${v.toFixed(2)}`;
+            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = `R$ ${v}`;
             const card = document.getElementById(`card-${i}`);
             if(card) card.style.background = v > 0 ? "#333" : "var(--card)";
         });
+    }
+
+    async function getPix() {
+        const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:document.getElementById('v-pix').value})});
+        const d = await res.json();
+        if(d.success) {
+            document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
+            document.getElementById('qr-area').setAttribute('data-c', d.code);
+            document.getElementById('qr-area').style.display='block';
+        } else { toast("Erro!"); }
+    }
+
+    function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
+
+    async function handleSaque() {
+        const v = document.getElementById('v-saq').value;
+        const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v})});
+        const d = await res.json();
+        if(d.success) { state.s = d.novoSaldo; updateUI(); closeM(); toast("Solicitado!"); } else toast(d.msg);
     }
 </script>
 </body>
