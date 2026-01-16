@@ -10,10 +10,10 @@
         .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
         .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
         
-        /* AREA DO JOGO - APENAS OS 10 QUADRADOS */
+        /* AREA DOS 10 QUADRADOS */
         .game-container { 
             display: grid; 
-            grid-template-columns: repeat(5, 1fr); /* 2 linhas de 5 para formar o conjunto */
+            grid-template-columns: repeat(5, 1fr); 
             gap: 10px; 
             max-width: 320px; 
             margin: 40px auto; 
@@ -38,7 +38,7 @@
 
         .active-cell { 
             transform: scale(1.2); 
-            box-shadow: 0 0 20px #fff; 
+            box-shadow: 0 0 25px #fff; 
             z-index: 5;
             border: 2px solid #fff;
         }
@@ -52,15 +52,7 @@
 <body>
     <div class="money-bg"></div>
 
-    <div id="tela-login">
-        <div class="card-auth" style="margin-top:50px; display:inline-block; background:#111; padding:20px; border:1px solid #d4af37;">
-            <input type="text" id="u" placeholder="Usuário"><br>
-            <input type="password" id="p" placeholder="Senha"><br>
-            <button class="btn-g" onclick="auth()">ENTRAR</button>
-        </div>
-    </div>
-
-    <div id="tela-jogo" style="display:none">
+    <div id="tela-jogo" style="display:block">
         <div class="top-bar">
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
             <button class="btn-g" style="width:auto; padding:5px 15px;">SAQUE</button>
@@ -68,34 +60,25 @@
         <h2 id="timer" style="color:#d4af37; font-size: 40px; margin:20px 0;">00:30</h2>
         
         <div id="grid" class="game-container"></div>
-
         <div id="bet-area" class="bet-area"></div>
     </div>
 
     <div id="overlay-bg"></div>
     <div id="res-modal" class="modal">
-        <h2 id="res-titulo">GANHOU!</h2>
+        <h2 id="res-titulo">RESULTADO</h2>
         <div id="res-cor-ball" style="width:50px; height:50px; border-radius:50%; margin:15px auto; border:2px solid #fff;"></div>
         <div id="res-valor" style="font-size:30px; color:#2ecc71; font-weight:bold;">R$ 0.00</div>
         <button class="btn-g" style="margin-top:15px" onclick="fecharRes()">OK</button>
     </div>
 
 <script>
-    let state = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
+    let state = { u: 'UserTest', s: 100, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
     let bloqueado = false;
-    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
-
-    async function auth() {
-        const u = document.getElementById('u').value, p = document.getElementById('p').value;
-        const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p}) });
-        const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo; state.b = d.bets; iniciar(); }
-    }
+    
+    // CORES INVERTIDAS E CORRIGIDAS: Roxo no lugar certo agora
+    const CORES = ['#FFF', '#444', '#FF0', '#800080', '#0F0', '#F00', '#00F', '#888', '#FF8C00', '#8B4513'];
 
     function iniciar() {
-        document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
-        
-        // Criar os 10 quadrados (um de cada cor)
         const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=0; i<10; i++){
             const c = document.createElement('div'); 
@@ -110,35 +93,33 @@
         CORES.forEach((c, i) => {
             const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
             b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
-            b.onclick = async () => { 
-                if(!bloqueado && state.s >= 1){ 
-                    state.b[i]++; state.s--; atualizar(); 
-                    await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
-                } 
-            };
+            b.onclick = () => { if(!bloqueado) { state.b[i]++; state.s--; atualizar(); } };
             area.appendChild(b);
         });
         atualizar(); setInterval(sync, 1000);
     }
 
     async function sync() {
-        const res = await fetch('/api/tempo-real'); const d = await res.json();
-        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-        if(d.segundos === 0 && !bloqueado) rodar();
+        // Simulação do timer para teste, use seu fetch original aqui
+        let timerEl = document.getElementById('timer');
+        let t = parseInt(timerEl.innerText.split(':')[1]);
+        if(t > 0) {
+            t--;
+            timerEl.innerText = `00:${t.toString().padStart(2,'0')}`;
+        } else {
+            if(!bloqueado) rodar();
+            timerEl.innerText = "00:30";
+        }
     }
 
-    async function rodar() {
+    function rodar() {
         bloqueado = true;
-        const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
-        const d = await res.json();
-        
-        let target = d.corAlvo;
-        let totalSteps = 20 + target; 
+        let alvo = Math.floor(Math.random() * 10); // Simula sorteio do servidor
         let curStep = 0;
+        let totalSteps = 20 + alvo;
 
         const loop = () => {
             document.querySelectorAll('.cell').forEach(el => el.classList.remove('active-cell'));
-            
             state.idx = (state.idx + 1) % 10;
             document.getElementById(`c-${state.idx}`).classList.add('active-cell');
 
@@ -146,26 +127,29 @@
                 setTimeout(loop, 60 + (curStep * 3));
             } else {
                 setTimeout(() => {
-                    mostrarFim(d.valorGanho, CORES[d.corAlvo]);
-                    state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false;
+                    document.getElementById('res-cor-ball').style.backgroundColor = CORES[alvo];
+                    document.getElementById('res-modal').style.display = 'block';
+                    document.getElementById('overlay-bg').style.display = 'block';
+                    bloqueado = false;
+                    state.b.fill(0);
+                    atualizar();
                 }, 800);
             }
         };
         loop();
     }
 
-    function mostrarFim(v, cor) {
-        document.getElementById('res-cor-ball').style.backgroundColor = cor;
-        document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
-        document.getElementById('overlay-bg').style.display = 'block';
-        document.getElementById('res-modal').style.display = 'block';
+    function fecharRes() { 
+        document.getElementById('res-modal').style.display='none'; 
+        document.getElementById('overlay-bg').style.display='none'; 
     }
 
-    function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
     function atualizar() { 
         document.getElementById('s-display').innerText = state.s.toFixed(2);
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
     }
+
+    iniciar();
 </script>
 </body>
 </html>
