@@ -9,10 +9,8 @@
         .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #051a05; background-image: radial-gradient(#114411 1px, transparent 1px); background-size: 25px 25px; z-index: -1; }
         .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
         .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
-        .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
-        input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
         
-        /* NOVO CONTAINER PARA OS 10 QUADRADOS */
+        /* CONTAINER DOS 10 QUADRADOS */
         .game-container { 
             display: grid; 
             grid-template-columns: repeat(5, 1fr); 
@@ -23,7 +21,6 @@
             background: rgba(0,0,0,0.8);
             border: 2px solid #d4af37;
             border-radius: 15px;
-            position: relative;
         }
 
         .cell { 
@@ -36,10 +33,9 @@
             color: #000; 
             font-weight: bold; 
             transition: all 0.2s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1);
         }
 
-        /* EFEITO DE SELEÇÃO NO GIRO */
         .active-cell { 
             transform: scale(1.25); 
             box-shadow: 0 0 30px #fff, inset 0 0 10px #fff; 
@@ -48,9 +44,9 @@
         }
 
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
-        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
+        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 5px solid transparent; cursor: pointer; color:#fff; }
         
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; box-shadow: 0 0 50px #000; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
         #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; backdrop-filter: blur(8px); }
         .cor-resultado { width: 50px; height: 50px; border-radius: 50%; border: 3px solid #fff; margin: 15px auto; display: block; }
     </style>
@@ -58,157 +54,130 @@
 <body>
     <div class="money-bg"></div>
 
-    <div id="tela-login">
-        <div class="card-auth">
-            <h2 id="titulo-auth" style="color:#d4af37">LOGIN GOLD</h2>
-            <div id="campo-email" style="display:none"><input type="email" id="email" placeholder="Gmail"></div>
-            <input type="text" id="u" placeholder="Usuário">
-            <input type="password" id="p" placeholder="Senha">
-            <button class="btn-g" onclick="auth()">ENTRAR</button>
-            <p onclick="alternarAuth()" style="color:#888; cursor:pointer; font-size:12px; margin-top:15px;">Novo? <b>Criar conta</b></p>
-        </div>
-    </div>
-
-    <div id="tela-jogo" style="display:none">
+    <div id="tela-jogo">
         <div class="top-bar">
             <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
-            <div>
-                <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
-                <button onclick="abrirM('m-saque')" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE</button>
-            </div>
+            <button class="btn-g" style="width:auto; padding:5px 15px;">SAQUE</button>
         </div>
         <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">00:30</h2></div>
         
-        <div class="game-container" id="grid">
-            </div>
+        <div class="game-container" id="grid"></div>
+
         <div id="bet-area" class="bet-area"></div>
     </div>
 
     <div id="overlay-bg"></div>
-    
     <div id="res-modal" class="modal">
-        <div id="res-icon" style="font-size:50px;">💰</div>
-        <h2 id="res-titulo">GANHOU!</h2>
+        <h2 id="res-titulo">RESULTADO</h2>
         <div id="res-cor-ball" class="cor-resultado"></div>
         <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold; margin-bottom:15px;">R$ 0.00</div>
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
     </div>
 
 <script>
-    let isLogin = true, bloqueado = false;
-    let state = { u: '', s: 0, g: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
-    
-    // CORES CORRIGIDAS: Cor 3 Roxo, Cor 4 Verde
-    const CORES = ['#FFF', '#444', '#FF0', '#800080', '#0F0', '#F00', '#00F', '#888', '#FF8C00', '#8B4513'];
+    let bloqueado = false;
+    let state = { u: 'User', s: 100, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSfx(freq, type, dur, vol = 0.1) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + dur);
-    }
-
-    function alternarAuth() { isLogin = !isLogin; document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; }
-
-    async function auth() {
-        const u = document.getElementById('u').value, p = document.getElementById('p').value, e = document.getElementById('email').value;
-        const res = await fetch(isLogin ? '/auth/login' : '/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p, email:e}) });
-        const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo; state.g = d.ganhos; state.b = d.bets || [0,0,0,0,0,0,0,0,0,0]; iniciar(); } else alert(d.message);
-    }
+    // LISTA ÚNICA DE CORES (A Cor 3 é Roxo, Cor 4 é Verde)
+    // Se quiser mudar a ordem, mude aqui e o sistema ajusta tudo sozinho
+    const CORES = [
+        '#FFFFFF', // 0 Branco
+        '#444444', // 1 Cinza
+        '#FFFF00', // 2 Amarelo
+        '#A020F0', // 3 Roxo (Ajustado)
+        '#00FF00', // 4 Verde (Ajustado)
+        '#FF0000', // 5 Vermelho
+        '#0000FF', // 6 Azul
+        '#FF8C00', // 7 Laranja
+        '#FF69B4', // 8 Rosa
+        '#8B4513'  // 9 Marrom
+    ];
 
     function iniciar() {
-        document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        
-        // GERA EXATAMENTE OS 10 QUADRADOS
-        for(let i=0; i<10; i++){
-            const c = document.createElement('div'); 
-            c.className = 'cell'; 
-            c.id = `c-${i}`;
-            c.style.background = CORES[i]; 
-            c.innerText = 'R$5'; 
-            g.appendChild(c);
-        }
-
         const area = document.getElementById('bet-area'); area.innerHTML = '';
-        CORES.forEach((c, i) => {
-            const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
-            b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
-            b.onclick = async () => { 
-                if(!bloqueado && state.s >= 1){ 
-                    playSfx(400, 'sine', 0.1);
-                    state.b[i]++; state.s--; atualizar(); 
-                    await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
-                } 
+
+        for(let i=0; i<10; i++) {
+            // Criar Quadrado de Cima
+            const c = document.createElement('div');
+            c.className = 'cell';
+            c.id = `c-${i}`;
+            c.style.background = CORES[i];
+            c.innerText = 'R$5';
+            g.appendChild(c);
+
+            // Criar Botão de Baixo
+            const b = document.createElement('div');
+            b.className = 'btn-bet';
+            b.style.borderBottomColor = CORES[i]; // Borda do botão com a cor certa
+            b.innerHTML = `COR ${i}<br><b id="vb-${i}">0</b>`;
+            b.onclick = () => {
+                if(!bloqueado && state.s >= 1) {
+                    state.b[i]++; state.s--; 
+                    atualizar();
+                    // Aqui iria seu fetch para salvar no banco
+                }
             };
             area.appendChild(b);
-        });
-        atualizar(); setInterval(sync, 1000);
+        }
+        atualizar();
+        setInterval(sync, 1000);
     }
 
     async function sync() {
-        const res = await fetch('/api/tempo-real'); const d = await res.json();
-        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-        if(d.segundos === 0 && !bloqueado) rodar();
+        let timerEl = document.getElementById('timer');
+        let t = parseInt(timerEl.innerText.split(':')[1]);
+        if(t > 0) {
+            t--;
+            timerEl.innerText = `00:${t.toString().padStart(2,'0')}`;
+        } else {
+            if(!bloqueado) rodar();
+            timerEl.innerText = "00:30";
+        }
     }
 
-    async function rodar() {
+    function rodar() {
         bloqueado = true;
-        const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
-        const d = await res.json();
-        
-        let target = d.corAlvo; 
-        let totalSteps = 30 + target; 
+        // Simulação do servidor escolhendo a cor (No seu original, use o fetch /api/spin)
+        let alvo = Math.floor(Math.random() * 10); 
         let currentStep = 0;
+        let totalSteps = 20 + alvo;
 
         const loop = () => {
             document.querySelectorAll('.cell').forEach(el => el.classList.remove('active-cell'));
-            
             state.idx = (state.idx + 1) % 10;
-            const currentEl = document.getElementById(`c-${state.idx}`);
-            currentEl.classList.add('active-cell');
-            
-            playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
+            document.getElementById(`c-${state.idx}`).classList.add('active-cell');
 
             if(++currentStep < totalSteps) {
-                let delay = 50 + (currentStep * 2);
-                setTimeout(loop, delay);
-            } else { 
+                setTimeout(loop, 60 + (currentStep * 2));
+            } else {
                 setTimeout(() => {
-                    mostrarFim(d.valorGanho, CORES[d.corAlvo]);
-                    state.s = d.novoSaldo; 
-                    state.g = d.novoGanhos; 
-                    state.b.fill(0); 
-                    atualizar(); 
-                    bloqueado = false; 
-                }, 1000); 
+                    document.getElementById('res-cor-ball').style.backgroundColor = CORES[alvo];
+                    document.getElementById('res-valor').innerText = `R$ ${(state.b[alvo] * 5).toFixed(2)}`;
+                    document.getElementById('res-modal').style.display = 'block';
+                    document.getElementById('overlay-bg').style.display = 'block';
+                    bloqueado = false;
+                    state.b.fill(0);
+                    atualizar();
+                }, 800);
             }
-        }; 
+        };
         loop();
     }
 
-    function mostrarFim(v, corSorteada) {
-        document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
-        document.getElementById('res-titulo').style.color = v > 0 ? "#2ecc71" : "#e74c3c";
-        document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
-        document.getElementById('res-cor-ball').style.backgroundColor = corSorteada;
-        document.getElementById('overlay-bg').style.display = 'block';
-        document.getElementById('res-modal').style.display = 'block';
+    function fecharRes() { 
+        document.getElementById('res-modal').style.display='none'; 
+        document.getElementById('overlay-bg').style.display='none'; 
     }
 
-    function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
-    function atualizar() { 
+    function atualizar() {
         document.getElementById('s-display').innerText = state.s.toFixed(2);
-        state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
+        state.b.forEach((v, i) => {
+            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v;
+        });
     }
-    
-    function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
-    function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
+
+    iniciar();
 </script>
 </body>
 </html>
