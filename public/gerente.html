@@ -1,125 +1,102 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Dono - SlotReal</title>
+    <title>Gerência SlotReal</title>
     <style>
-        :root { --gold: #d4af37; --bg: #000; --card: #111; --green: #2ecc71; }
-        body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding: 20px; text-align: center; }
-        
-        .stats-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
-        .stat-card { background: var(--card); border: 1px solid var(--gold); padding: 15px; border-radius: 10px; min-width: 180px; }
-        .stat-card h3 { margin: 0; font-size: 12px; color: #888; text-transform: uppercase; }
-        .stat-card p { margin: 10px 0 0; font-size: 22px; font-weight: bold; }
-
-        .user-list { max-width: 600px; margin: 0 auto; }
-        .user-card { background: var(--card); border: 1px solid #333; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        
-        input { background: #000; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; width: 70px; text-align: center; }
-        button { cursor: pointer; border: none; border-radius: 8px; padding: 10px 15px; font-weight: bold; background: var(--gold); color: #000; }
-        .btn-refresh { width: 100%; max-width: 600px; margin-bottom: 20px; font-size: 16px; }
-
-        #login-area { margin-top: 100px; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+        .card { background: #111; border: 1px solid #d4af37; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .saque-card { background: #111; border: 1px solid #2ecc71; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        button { background: #d4af37; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor:pointer; }
+        .btn-pago { background: #2ecc71; color: #000; }
+        input { padding: 10px; border-radius: 5px; margin: 5px; }
     </style>
 </head>
 <body>
+    <h1>Painel do Gerente</h1>
+    
+    <div id="info-lucro" style="margin-bottom: 20px; font-weight: bold; color: #d4af37;">
+        LUCRO TOTAL: R$ <span id="val-lucro">0.00</span>
+    </div>
 
-    <div id="login-area">
-        <h1 style="color:var(--gold)">PAINEL DE CONTROLE</h1>
-        <input type="password" id="pass-admin" placeholder="Sua Senha Mestra" style="width: 200px;">
-        <br><br>
-        <button onclick="carregar()">ACESSAR GERENTE</button>
+    <div id="login-admin">
+        <input type="password" id="pass-admin" placeholder="Senha do Gerente">
+        <button onclick="carregar()">ACESSAR PAINEL</button>
     </div>
 
     <div id="painel" style="display:none">
-        <div class="stats-container">
-            <div class="stat-card" style="border-left: 5px solid var(--green);">
-                <h3>💰 MEU LUCRO (REAL)</h3>
-                <p id="lucro-banca" style="color: var(--green);">R$ 0,00</p>
-            </div>
-            <div class="stat-card">
-                <h3>👥 JOGADORES</h3>
-                <p id="total-users">0</p>
-            </div>
-            <div class="stat-card" style="border-left: 5px solid #e74c3c;">
-                <h3>Saldo dos Clientes</h3>
-                <p id="total-saldo" style="color: #e74c3c;">R$ 0,00</p>
-            </div>
-        </div>
-
-        <button class="btn-refresh" onclick="carregar()">🔄 ATUALIZAR LISTA</button>
-
-        <div id="lista" class="user-list"></div>
+        <h3>SOLICITAÇÕES DE SAQUE</h3>
+        <div id="lista-saques"></div>
+        <hr>
+        <h3>LISTA DE USUÁRIOS</h3>
+        <div id="lista-usuarios"></div>
     </div>
 
     <script>
-        let senhaMestra = "";
-
+        let senhaGlobal = "";
         async function carregar() {
-            senhaMestra = document.getElementById('pass-admin').value;
-            
-            try {
-                const res = await fetch('/api/admin/list', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ senha: senhaMestra })
-                });
-                const d = await res.json();
-
-                if(d.success) {
-                    document.getElementById('login-area').style.display = 'none';
-                    document.getElementById('painel').style.display = 'block';
-                    
-                    // Atualiza os Totais
-                    document.getElementById('lucro-banca').innerText = `R$ ${d.lucroBanca.toFixed(2)}`;
-                    document.getElementById('total-users').innerText = d.users.length;
-
-                    let somaSaldo = 0;
-                    const listArea = document.getElementById('lista');
-                    listArea.innerHTML = "";
-
-                    d.users.forEach(u => {
-                        somaSaldo += u.saldo;
-                        listArea.innerHTML += `
-                            <div class="user-card">
-                                <div style="text-align: left;">
-                                    <b>${u.user}</b><br>
-                                    <small style="color:var(--green)">R$ ${u.saldo.toFixed(2)}</small>
-                                </div>
-                                <div>
-                                    <input type="number" id="v-${u.user}" value="10">
-                                    <button onclick="darBonus('${u.user}')">DAR BÔNUS</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    document.getElementById('total-saldo').innerText = `R$ ${somaSaldo.toFixed(2)}`;
-                } else {
-                    alert("Senha errada, pai!");
-                }
-            } catch (e) {
-                alert("Erro ao conectar com o servidor.");
-            }
-        }
-
-        async function darBonus(user) {
-            const valor = document.getElementById(`v-${user}`).value;
-            const res = await fetch('/api/admin/bonus', {
+            senhaGlobal = document.getElementById('pass-admin').value;
+            const res = await fetch('/api/admin/list', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    senha: senhaMestra, 
-                    user: user, 
-                    valor: parseFloat(valor) 
-                })
+                body: JSON.stringify({ senha: senhaGlobal })
             });
+            const d = await res.json();
+            if(d.success) {
+                document.getElementById('login-admin').style.display = 'none';
+                document.getElementById('painel').style.display = 'block';
+                document.getElementById('val-lucro').innerText = d.lucroBanca.toFixed(2);
 
-            if(res.ok) {
-                alert("Bônus enviado com sucesso!");
-                carregar(); // Atualiza a lista automaticamente
-            }
+                // LISTA DE SAQUES
+                const listaSaques = document.getElementById('lista-saques');
+                listaSaques.innerHTML = d.saques.length === 0 ? "<p>Nenhum saque pendente</p>" : "";
+                d.saques.forEach(s => {
+                    listaSaques.innerHTML += `
+                        <div class="saque-card">
+                            <div style="text-align:left">
+                                <b>Usuário: ${s.user}</b><br>
+                                <span style="color:#2ecc71">Valor: R$ ${s.valor.toFixed(2)}</span><br>
+                                <small>PIX: ${s.pix}</small>
+                            </div>
+                            <button class="btn-pago" onclick="confirmarPagamento('${s._id}')">JÁ PAGUEI</button>
+                        </div>`;
+                });
+
+                // LISTA DE USUÁRIOS
+                const list = document.getElementById('lista-usuarios');
+                list.innerHTML = "";
+                d.users.forEach(u => {
+                    list.innerHTML += `
+                        <div class="card">
+                            <div><b>${u.user}</b><br>Saldo: R$ ${u.saldo.toFixed(2)}</div>
+                            <div>
+                                <input type="number" id="v-${u.user}" value="10" style="width:50px">
+                                <button onclick="addBonus('${u.user}')">BÔNUS</button>
+                            </div>
+                        </div>`;
+                });
+            } else { alert("Senha errada!"); }
+        }
+
+        async function confirmarPagamento(id) {
+            if(!confirm("Você já fez o PIX para o cliente?")) return;
+            await fetch('/api/admin/pagar-saque', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ senha: senhaGlobal, id: id })
+            });
+            carregar();
+        }
+
+        async function addBonus(user) {
+            const v = document.getElementById(`v-${user}`).value;
+            await fetch('/api/admin/bonus', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ senha: senhaGlobal, user: user, valor: parseFloat(v) })
+            });
+            carregar();
         }
     </script>
 </body>
