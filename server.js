@@ -26,7 +26,6 @@ const Stats = mongoose.models.Stats || mongoose.model('Stats', new mongoose.Sche
     lucroTotal: { type: Number, default: 0 }
 }));
 
-// NOVO: BANCO PARA GUARDAR OS SAQUES
 const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Schema({
     user: String,
     valor: Number,
@@ -80,7 +79,7 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.end();
 });
 
-// SOLICITAR SAQUE (PRO USUÁRIO PEDIR)
+// SOLICITAR SAQUE
 app.post('/api/saque', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     const valor = parseFloat(req.body.valor);
@@ -94,7 +93,7 @@ app.post('/api/saque', async (req, res) => {
     }
 });
 
-// GIRO COM PRÊMIO DE R$ 5,00 (10x em cima de 0.50)
+// GIRO CORRIGIDO (Multiplicador 10x: R$ 0,50 aposta -> R$ 5,00 ganho)
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
@@ -106,18 +105,20 @@ app.post('/api/spin', async (req, res) => {
 
     const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
     
-    // Se ele apostou R$ 0,50, o prêmio é R$ 5,00 (Multiplicador 10x)
+    // LOGICA FINAL: 0.50 de aposta na cor = 5.00 de prêmio
     const ganho = Number((u.bets[alvo] * 10).toFixed(2));
     const lucroRodada = totalApostado - ganho;
 
+    // Atualiza o lucro da banca no gerente
     await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
+    
     const nS = Number((u.saldo + ganho).toFixed(2));
     await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, bets: [0,0,0,0,0,0,0,0,0,0] } });
 
     res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
-// ADMIN LIST (MOSTRA USUÁRIOS, LUCRO E SAQUES PENDENTES)
+// ADMIN LIST (USUÁRIOS, LUCRO E SAQUES)
 app.post('/api/admin/list', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     const users = await User.find({}, 'user saldo');
@@ -126,7 +127,7 @@ app.post('/api/admin/list', async (req, res) => {
     res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0, saques });
 });
 
-// MARCAR SAQUE COMO PAGO
+// PAGAR SAQUE
 app.post('/api/admin/pagar-saque', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     await Saque.findByIdAndDelete(req.body.id);
@@ -154,3 +155,4 @@ app.post('/auth/register', async (req, res) => {
 });
 
 app.listen(process.env.PORT || 10000);
+                                      
