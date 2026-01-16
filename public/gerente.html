@@ -2,83 +2,91 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Gerente - SlotReal</title>
+    <title>SlotReal - Painel Gerente</title>
     <style>
-        body { background: #0b0f0b; color: #fff; font-family: sans-serif; padding: 20px; }
-        .card { background: #111; border: 1px solid #d4af37; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #333; padding: 12px; text-align: left; }
-        th { background: #d4af37; color: #000; }
-        input { padding: 5px; width: 80px; background: #222; color: #fff; border: 1px solid #d4af37; }
-        .btn-save { background: #2ecc71; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .stat-box { background: #1a1a1a; padding: 15px; border-radius: 8px; border-left: 4px solid #d4af37; }
+        body { background: #050505; color: #eee; font-family: sans-serif; margin: 0; }
+        .sidebar { width: 250px; background: #111; height: 100vh; position: fixed; border-right: 1px solid #d4af37; padding: 20px; }
+        .content { margin-left: 290px; padding: 20px; }
+        .card { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { border-bottom: 2px solid #d4af37; padding: 10px; text-align: left; color: #d4af37; }
+        td { padding: 10px; border-bottom: 1px solid #222; }
+        input, button { padding: 8px; border-radius: 5px; border: 1px solid #d4af37; background: #000; color: #fff; }
+        .btn-edit { background: #d4af37; color: #000; cursor: pointer; font-weight: bold; }
+        .stats { display: flex; gap: 20px; }
+        .stat-box { flex: 1; background: #111; padding: 15px; border-radius: 10px; border-left: 5px solid #d4af37; }
     </style>
 </head>
 <body>
-    <h1>👑 PAINEL DO GERENTE</h1>
-
-    <div class="stats-grid">
-        <div class="stat-box">Usuários: <b id="stat-users">-</b></div>
-        <div class="stat-box">Saldo em Conta: <b id="stat-saldos">R$ 0</b></div>
-        <div class="stat-box">Lucro Total: <b id="stat-lucro">R$ 0</b></div>
+    <div class="sidebar">
+        <h2 style="color:#d4af37">GERENTE GOLD</h2>
+        <hr border="0.1">
+        <p>Dashboard</p>
+        <p>Usuários</p>
+        <p>Configurações</p>
+        <button onclick="carregarDados()" class="btn-edit" style="width: 100%">ATUALIZAR DADOS</button>
     </div>
 
-    <div class="card">
-        <h3>Lista de Jogadores</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Usuário</th>
-                    <th>Email</th>
-                    <th>Saldo Atual</th>
-                    <th>Total Ganho</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody id="user-table"></tbody>
-        </table>
+    <div class="content">
+        <div class="stats">
+            <div class="stat-box">Saldo Total Usuários: <br><b id="total-saldo" style="color:#2ecc71">R$ 0.00</b></div>
+            <div class="stat-box">Total de Contas: <br><b id="total-users">0</b></div>
+            <div class="stat-box">Ganhos da Casa (Estimado): <br><b id="lucro-casa" style="color:#d4af37">R$ 0.00</b></div>
+        </div>
+
+        <div class="card">
+            <h3>Lista de Jogadores</h3>
+            <table id="tabela-users">
+                <thead>
+                    <tr>
+                        <th>Usuário</th>
+                        <th>Email</th>
+                        <th>Saldo (R$)</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-corpo"></tbody>
+            </table>
+        </div>
     </div>
 
     <script>
         async function carregarDados() {
-            // Stats
-            const sRes = await fetch('/api/admin/stats');
-            const sData = await sRes.json();
-            document.getElementById('stat-users').innerText = sData.totalUsers;
-            document.getElementById('stat-saldos').innerText = `R$ ${sData.totalSaldos.toFixed(2)}`;
-            document.getElementById('stat-lucro').innerText = `R$ ${sData.totalGanhos.toFixed(2)}`;
+            const res = await fetch('/admin/users');
+            const data = await res.json();
+            
+            const corpo = document.getElementById('lista-corpo');
+            corpo.innerHTML = '';
+            let totalS = 0;
 
-            // Tabela
-            const uRes = await fetch('/api/admin/users');
-            const users = await uRes.json();
-            const tbody = document.getElementById('user-table');
-            tbody.innerHTML = '';
-
-            users.forEach(u => {
-                tbody.innerHTML += `
+            data.forEach(u => {
+                totalS += u.saldo;
+                corpo.innerHTML += `
                     <tr>
                         <td>${u.user}</td>
-                        <td>${u.email || '-'}</td>
-                        <td><input type="number" id="saldo-${u.user}" value="${u.saldo.toFixed(2)}"></td>
-                        <td>R$ ${u.ganhos.toFixed(2)}</td>
-                        <td><button class="btn-save" onclick="salvar('${u.user}')">ATUALIZAR</button></td>
+                        <td>${u.email || 'N/A'}</td>
+                        <td><input type="number" id="s-${u.user}" value="${u.saldo.toFixed(2)}"></td>
+                        <td>
+                            <button class="btn-edit" onclick="updateSaldo('${u.user}')">SALVAR</button>
+                            <button style="background:red; color:white" onclick="deletar('${u.user}')">BANIR</button>
+                        </td>
                     </tr>
                 `;
             });
+
+            document.getElementById('total-users').innerText = data.length;
+            document.getElementById('total-saldo').innerText = `R$ ${totalS.toFixed(2)}`;
         }
 
-        async function salvar(username) {
-            const novoSaldo = document.getElementById(`saldo-${username}`).value;
-            const res = await fetch('/api/admin/edit-saldo', {
+        async function updateSaldo(username) {
+            const novoSaldo = document.getElementById(`s-${username}`).value;
+            await fetch('/admin/update-saldo', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user: username, novoSaldo })
+                body: JSON.stringify({ user: username, saldo: Number(novoSaldo) })
             });
-            if(res.ok) {
-                alert('Saldo atualizado!');
-                carregarDados();
-            }
+            alert('Saldo atualizado!');
+            carregarDados();
         }
 
         carregarDados();
