@@ -22,7 +22,7 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// ALTERADO DE 120 PARA 30 SEGUNDOS
+// TIMER AJUSTADO PARA 30 SEGUNDOS
 let t = 30;
 setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
@@ -50,17 +50,34 @@ app.post('/api/spin', async (req, res) => {
         const u = await User.findOne({ user: req.body.user });
         if (!u) return res.json({ success: false });
 
+        // LÓGICA: PEGA AS CORES COM MENOR APOSTA
         let menorValor = Math.min(...u.bets);
         let coresPossiveis = [];
-        u.bets.forEach((v, i) => { if (v === menorValor) coresPossiveis.push(i); });
+        u.bets.forEach((v, i) => { 
+            if (v === menorValor) coresPossiveis.push(i); 
+        });
 
+        // Sorteia uma cor entre as que tiveram menos aposta (geralmente as que tem 0)
         const alvo = coresPossiveis[Math.floor(Math.random() * coresPossiveis.length)];
-        const ganho = u.bets[alvo] * 5;
+        
+        const ganho = u.bets[alvo] * 5; // Multiplicador de 5x
         const nS = Number((u.saldo + ganho).toFixed(2));
         const nG = Number((u.ganhos + ganho).toFixed(2));
 
-        await User.findOneAndUpdate({ user: u.user }, { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] });
-        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG, valorGanho: ganho });
+        // Zera as apostas após o giro e salva o novo saldo
+        await User.findOneAndUpdate({ user: u.user }, { 
+            saldo: nS, 
+            ganhos: nG, 
+            bets: [0,0,0,0,0,0,0,0,0,0] 
+        });
+
+        res.json({ 
+            success: true, 
+            corAlvo: alvo, 
+            novoSaldo: nS, 
+            novoGanhos: nG, 
+            valorGanho: ganho 
+        });
     } catch (e) { res.json({ success: false }); }
 });
 
