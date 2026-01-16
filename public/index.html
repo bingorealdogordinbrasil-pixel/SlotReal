@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SlotReal Gold</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
         .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #051a05; background-image: radial-gradient(#114411 1px, transparent 1px); background-size: 25px 25px; z-index: -1; }
         .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
         .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
         .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.8); border-radius: 10px; border: 2px solid #d4af37; max-width: 340px; margin: 20px auto; }
-        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: 0.1s; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; }
@@ -47,7 +47,7 @@
 
     function bip(f, d) { try { const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.type='sine'; o.frequency.value=f; g.gain.value=0.05; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+d); } catch(e){} }
 
-    function iniciar() {
+    function montar() {
         const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
@@ -90,7 +90,7 @@
     function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay').style.display='block'; }
     function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay').style.display='none'; }
     setInterval(async () => { const r = await fetch('/api/tempo-real'); const d = await r.json(); document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`; if(d.segundos === 0 && !bloqueado) rodar(); }, 1000);
-    iniciar();
+    montar();
 </script>
 </body>
 </html>
