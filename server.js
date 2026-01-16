@@ -1,120 +1,34 @@
 const express = require('express');
-const path = require('path');
 const mongoose = require('mongoose');
-const https = require('https');
-
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-// CONFIGURAÇÕES DO GERENTE
-const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
-const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
+mongoose.connect("mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority");
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SERVIDOR ON - CICLO 30 SEG"));
-
-const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
-    user: { type: String, unique: true },
-    pass: String,
-    email: String,
-    saldo: { type: Number, default: 0.00 },
-    ganhos: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
+const User = mongoose.model('User', new mongoose.Schema({
+    user: String, pass: String, saldo: { type: Number, default: 0 }, bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// TIMER DO JOGO - AGORA FIXADO EM 30 SEGUNDOS
-let t = 30;
-setInterval(() => { 
-    if(t > 0) t--; 
-    else t = 30; // Quando chega em 0, volta para 30 e o front dispara a roleta
-}, 1000);
-
+let t = 30; 
+setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
-// --- LOGIN ---
-app.post('/auth/login', async (req, res) => {
-    const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-    if (c) res.json({ success: true, user: c.user, saldo: c.saldo, ganhos: c.ganhos, bets: c.bets });
-    else res.json({ success: false, message: "Dados incorretos" });
-});
-
-// --- SALVAR APOSTAS (DE 1 EM 1 REAL) ---
 app.post('/api/save-saldo', async (req, res) => {
-    try {
-        // Recebe o novo saldo e as apostas acumuladas de 1 em 1 do front
-        await User.findOneAndUpdate({ user: req.body.user }, { 
-            saldo: req.body.saldo, 
-            bets: req.body.bets 
-        });
-        res.json({ success: true });
-    } catch (e) { res.json({ success: false }); }
+    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
+    res.json({ success: true });
 });
 
-// --- LÓGICA DO GIRO (SPIN) ---
 app.post('/api/spin', async (req, res) => {
-    try {
-        const u = await User.findOne({ user: req.body.user });
-        if (!u) return res.json({ success: false });
-
-        // SISTEMA ANTIBANCA: Escolhe a cor com MENOR valor apostado
-        let menorValor = Math.min(...u.bets);
-        let coresPossiveis = [];
-        u.bets.forEach((v, i) => { if (v === menorValor) coresPossiveis.push(i); });
-
-        // Sorteia o alvo entre as cores que dão lucro/menor prejuízo
-        const alvo = coresPossiveis[Math.floor(Math.random() * coresPossiveis.length)];
-        
-        // Pagamento de 5x o valor apostado na cor sorteada (cada clique foi 1 real)
-        const ganho = Number((u.bets[alvo] * 5).toFixed(2));
-        const nS = Number((u.saldo + ganho).toFixed(2));
-        const nG = Number((u.ganhos + ganho).toFixed(2));
-
-        // ATUALIZA SALDO E ZERA AS APOSTAS PARA O PRÓXIMO CICLO DE 30s
-        await User.findOneAndUpdate(
-            { user: u.user }, 
-            { $set: { saldo: nS, ganhos: nG, bets: [0,0,0,0,0,0,0,0,0,0] } }
-        );
-
-        res.json({ success: true, corAlvo: alvo, novoSaldo: nS, novoGanhos: nG, valorGanho: ganho });
-    } catch (e) { res.json({ success: false }); }
+    const u = await User.findOne({ user: req.body.user });
+    let menorAposta = Math.min(...u.bets);
+    let opcoes = [];
+    u.bets.forEach((v, i) => { if(v === menorAposta) opcoes.push(i); });
+    const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
+    
+    const ganho = u.bets[alvo] * 5; // Paga 5x o valor apostado
+    const novoSaldo = u.saldo + ganho;
+    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: novoSaldo, bets: [0,0,0,0,0,0,0,0,0,0] } });
+    res.json({ success: true, corAlvo: alvo, novoSaldo: novoSaldo, valorGanho: ganho });
 });
-
-// --- MERCADO PAGO ---
-app.post('/gerar-pix', (req, res) => {
-    const postData = JSON.stringify({
-        transaction_amount: Number(req.body.valor),
-        description: `Dep_${req.body.userLogado}`,
-        payment_method_id: "pix",
-        payer: { 
-            email: `${req.body.userLogado}@gmail.com`, 
-            first_name: req.body.userLogado, 
-            identification: { type: "CPF", number: "19119119100" } 
-        }
-    });
-
-    const options = {
-        hostname: 'api.mercadopago.com', 
-        path: '/v1/payments', 
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json' }
-    };
-
-    const mpReq = https.request(options, (mpRes) => {
-        let b = ''; 
-        mpRes.on('data', d => b += d);
-        mpRes.on('end', () => {
-            try {
-                const r = JSON.parse(b);
-                res.json({ 
-                    success: true, 
-                    imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, 
-                    copia_e_cola: r.point_of_interaction.transaction_data.qr_code 
-                });
-            } catch(e) { res.json({ success: false }); }
-        });
-    });
-    mpReq.write(postData); 
-    mpReq.end();
-});
-
-app.listen(process.env.PORT || 10000);
+app.listen(10000);
