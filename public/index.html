@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SlotReal - Premium Gold</title>
     <style>
-        /* MANTENDO O TEU ESTILO ORIGINAL 100% */
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
         .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #051a05; background-image: radial-gradient(#114411 1px, transparent 1px); background-size: 25px 25px; z-index: -1; }
         .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
@@ -50,7 +49,7 @@
                 <button onclick="sacarUrubu()" style="background:#e74c3c; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">SAQUE URUBU</button>
             </div>
         </div>
-        <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">02:00</h2></div>
+        <div class="timer-container"><h2 id="timer" style="color:#d4af37; font-size: 45px; margin:20px 0;">00:30</h2></div>
         
         <div class="game-container">
             <div class="centro-gold"><div class="money-bag">💰</div></div>
@@ -62,18 +61,14 @@
     <div id="overlay-bg"></div>
     
     <div id="m-pix" class="modal">
-        <h3 style="color:#d4af37">DEPÓSITO PIX</h3>
-        <p style="font-size: 11px;">Mínimo R$ 1,00</p>
-        <input type="number" id="v-pix" value="20" placeholder="Valor R$">
-        <button class="btn-g" id="btn-gerar" onclick="gerarPix()">GERAR QR CODE</button>
-        
+        <h3 style="color:#d4af37">DEPOSITAR PIX</h3>
+        <input type="number" id="v-pix" value="20" style="width:90%; padding:10px; margin-bottom:10px; background:#222; border:1px solid #333; color:#fff; border-radius:8px;">
+        <button class="btn-g" onclick="gerarPix()">GERAR QR CODE</button>
         <div id="res-pix" style="display:none; margin-top:15px; background:#fff; padding:10px; border-radius:10px;">
-            <img id="q-img" style="width:160px; height:160px; display:block; margin:0 auto;">
-            <p style="color: #000; font-size: 10px; margin: 5px 0;">Clique abaixo para copiar o código:</p>
-            <button class="btn-g" style="font-size:10px; padding: 5px;" onclick="copiarPix()">COPIAR PIX COPIA E COLA</button>
+            <img id="q-img" style="width:150px; height:150px; display:block; margin:0 auto;">
+            <button class="btn-g" style="margin-top:10px; font-size:11px;" onclick="copiarPix()">COPIAR PIX</button>
         </div>
-        
-        <p onclick="fecharM()" style="color:#ff4444; cursor:pointer; margin-top:15px; font-size: 12px;">FECHAR</p>
+        <p onclick="fecharM()" style="color:red; cursor:pointer; margin-top:15px;">FECHAR</p>
     </div>
 
     <div id="res-modal" class="modal">
@@ -93,7 +88,8 @@
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSfx(freq, type, dur, vol = 0.1) {
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
         osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
@@ -116,7 +112,7 @@
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
             const p = MAP.indexOf(i); 
-            if(p !== -1) { c.style.background = CORES[p % 10]; c.innerText = 'R$5'; } else c.style.opacity = '0.05';
+            if(p !== -1) { c.style.background = CORES[p % 10]; c.innerText = 'R$5'; } else { c.style.opacity = '0.05'; }
             g.appendChild(c);
         }
         const area = document.getElementById('bet-area'); area.innerHTML = '';
@@ -125,7 +121,8 @@
             b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
             b.onclick = async () => { 
                 if(!bloqueado && state.s >= 1){ 
-                    playSfx(400, 'sine', 0.1); state.b[i]++; state.s--; atualizar(); 
+                    playSfx(400, 'sine', 0.1);
+                    state.b[i]++; state.s--; atualizar(); 
                     await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
                 } 
             };
@@ -136,7 +133,7 @@
 
     async function sync() {
         const res = await fetch('/api/tempo-real'); const d = await res.json();
-        document.getElementById('timer').innerText = `${Math.floor(d.segundos/60)}:${(d.segundos%60).toString().padStart(2,'0')}`;
+        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
         if(d.segundos === 0 && !bloqueado) rodar();
     }
 
@@ -144,69 +141,63 @@
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
-        let targetPos = -1;
-        for(let i = 0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPos = i; break; } }
-        let totalSteps = (MAP.length * 3) + targetPos; let currentStep = 0;
+        let targetPosNoMapa = -1;
+        for(let i = 0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPosNoMapa = i; break; } }
+        let totalSteps = (MAP.length * 3) + targetPosNoMapa; 
+        let currentStep = 0;
         const loop = () => {
-            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none'; document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
+            document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
+            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
             const el = document.getElementById(`c-${MAP[state.idx]}`);
-            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff'; el.style.transform = 'scale(1.35)';
+            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff';
+            el.style.transform = 'scale(1.35)';
             playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
             if(++currentStep < totalSteps) {
-                let delay = 40; let rem = totalSteps - currentStep;
-                if (rem < 15) delay += (15 - rem) * 35; setTimeout(loop, delay);
+                let delay = 40; let remaining = totalSteps - currentStep;
+                if (remaining < 15) delay += (15 - remaining) * 35; 
+                setTimeout(loop, delay);
             } else { 
                 setTimeout(() => {
                     mostrarFim(d.valorGanho, CORES[d.corAlvo]);
                     state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; 
-                }, 1000); 
+                }, 1500); 
             }
         }; loop();
     }
 
-    // --- LOGICA DE DEPÓSITO PIX ---
     async function gerarPix() {
-        const valor = document.getElementById('v-pix').value;
-        const btn = document.getElementById('btn-gerar');
-        if(valor < 1) return alert("Valor mínimo R$ 1,00");
-        
-        btn.innerText = "GERANDO..."; btn.disabled = true;
-        try {
-            const res = await fetch('/gerar-pix', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userLogado: state.u, valor: valor }) });
-            const d = await res.json();
-            if(d.success) {
-                document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
-                pixCopiaCola = d.copia_e_cola;
-                document.getElementById('res-pix').style.display = 'block';
-                btn.innerText = "QR CODE GERADO!";
-            } else { alert("Erro ao gerar Pix!"); btn.disabled = false; btn.innerText = "GERAR NOVAMENTE"; }
-        } catch(e) { alert("Erro de conexão!"); btn.disabled = false; }
+        const val = document.getElementById('v-pix').value;
+        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:val}) });
+        const d = await res.json();
+        if(d.success) {
+            document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
+            pixCopiaCola = d.copia_e_cola;
+            document.getElementById('res-pix').style.display='block';
+        }
     }
 
-    function copiarPix() {
-        navigator.clipboard.writeText(pixCopiaCola);
-        alert("Código Pix Copiado com sucesso!");
-    }
+    function copiarPix() { navigator.clipboard.writeText(pixCopiaCola); alert("Pix Copiado!"); }
 
     async function sacarUrubu() {
-        const v = prompt("Quanto deseja sacar (Saldo Urubu)?");
-        if(!v || v > state.s || v <= 0) return alert("Saldo insuficiente ou valor inválido!");
-        alert("Pedido de Saque enviado para análise!");
+        const v = prompt("Valor do Saque:");
+        if(v > state.s) return alert("Saldo insuficiente");
         state.s -= Number(v); atualizar();
         await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})});
+        alert("Saque solicitado!");
     }
 
-    function mostrarFim(v, cor) {
+    function mostrarFim(v, corSorteada) {
         document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
         document.getElementById('res-titulo').style.color = v > 0 ? "#2ecc71" : "#e74c3c";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
-        document.getElementById('res-cor-ball').style.backgroundColor = cor;
-        document.getElementById('res-cor-ball').style.boxShadow = `0 0 20px ${cor}`;
-        abrirM('res-modal');
+        document.getElementById('res-cor-ball').style.backgroundColor = corSorteada;
+        document.getElementById('res-cor-ball').style.boxShadow = `0 0 20px ${corSorteada}`;
+        document.getElementById('overlay-bg').style.display = 'block';
+        document.getElementById('res-modal').style.display = 'block';
     }
 
-    function fecharRes() { fecharM(); }
+    function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
     function atualizar() { 
         document.getElementById('s-display').innerText = state.s.toFixed(2);
         state.b.forEach((v,i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
