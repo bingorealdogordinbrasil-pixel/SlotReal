@@ -2,60 +2,44 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerente Gold - Painel de Controle</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
+        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
         .admin-card { background: #111; border: 1px solid #d4af37; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        h1, h2 { color: #d4af37; text-transform: uppercase; letter-spacing: 2px; }
-        
-        .login-box { margin: 100px auto; max-width: 300px; background: #111; padding: 30px; border: 2px solid #d4af37; border-radius: 15px; text-align: center; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #0a0a0a; }
-        th { background: #d4af37; color: #000; padding: 12px; font-size: 14px; }
-        td { padding: 12px; border-bottom: 1px solid #333; text-align: center; font-size: 14px; }
-        
-        input { background: #222; border: 1px solid #d4af37; color: #fff; padding: 8px; border-radius: 5px; width: 100px; text-align: center; }
-        #senha-admin { width: 90%; margin-bottom: 15px; }
-
-        .btn { padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        h1, h2 { color: #d4af37; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #d4af37; color: #000; padding: 10px; }
+        td { padding: 10px; border-bottom: 1px solid #333; text-align: center; }
+        input { background: #222; border: 1px solid #d4af37; color: #fff; padding: 8px; border-radius: 5px; text-align: center; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-save { background: #2ecc71; color: #000; }
-        .btn-save:hover { background: #27ae60; transform: scale(1.05); }
-        
-        .stats-grid { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
-        .stat-box { background: #1a1a1a; padding: 20px; border-radius: 10px; border-left: 5px solid #d4af37; flex: 1; min-width: 200px; }
-        
-        .header-panel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .stats-grid { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-box { background: #1a1a1a; padding: 15px; border-radius: 10px; border-left: 5px solid #d4af37; flex: 1; }
     </style>
 </head>
 <body>
-
-    <div id="login-admin" class="login-box">
-        <h2>ACESSO RESTRITO</h2>
-        <input type="password" id="senha-admin" placeholder="Senha do Gerente">
-        <button class="btn btn-save" style="width: 100%" onclick="carregarDados()">ENTRAR NO PAINEL</button>
+    <h1>GERENCIAMENTO PREMIUM GOLD</h1>
+    
+    <div id="login-admin" style="text-align: center; margin-top: 100px;">
+        <h2 style="margin-bottom: 20px;">ACESSO RESTRITO</h2>
+        <input type="password" id="senha-admin" placeholder="Senha do Gerente" style="width: 250px;"><br><br>
+        <button class="btn btn-save" onclick="carregarDados()">ACESSAR PAINEL</button>
     </div>
 
     <div id="painel-conteudo" style="display:none">
-        <div class="header-panel">
-            <h1>GERENCIAMENTO PREMIUM GOLD</h1>
-            <button class="btn" style="background: #e74c3c; color: #fff;" onclick="location.reload()">SAIR</button>
-        </div>
-
         <div class="stats-grid">
-            <div class="stat-box">Total em Conta (Todos Users): <h2 id="total-banca">R$ 0.00</h2></div>
+            <div class="stat-box">Total na Banca (Soma de todos): <h2 id="total-banca">R$ 0.00</h2></div>
             <div class="stat-box">Usuários Cadastrados: <h2 id="total-users">0</h2></div>
         </div>
 
         <div class="admin-card">
-            <h2>LISTA DE JOGADORES</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Usuário</th>
                         <th>E-mail</th>
                         <th>Saldo Atual (R$)</th>
-                        <th>Total Ganho (R$)</th>
+                        <th>Ganhos Totais (R$)</th>
                         <th>Ação</th>
                     </tr>
                 </thead>
@@ -65,63 +49,41 @@
     </div>
 
     <script>
-        const SENHA_MESTRA = "76811867"; // Senha que você definiu
-
         async function carregarDados() {
-            const senhaDigitada = document.getElementById('senha-admin').value;
+            const senha = document.getElementById('senha-admin').value;
+            const res = await fetch('/admin/stats', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ senha })
+            });
+            const d = await res.json();
 
-            // Segurança básica no front, mas o servidor também deve validar!
-            if (senhaDigitada !== SENHA_MESTRA) {
-                alert("Senha do Gerente Incorreta!");
-                return;
-            }
+            if(d.success) {
+                document.getElementById('login-admin').style.display = 'none';
+                document.getElementById('painel-conteudo').style.display = 'block';
+                document.getElementById('total-banca').innerText = `R$ ${d.totalBanca.toFixed(2)}`;
+                document.getElementById('total-users').innerText = d.usuarios.length;
 
-            try {
-                // Rota que busca todos os usuários do MongoDB
-                const res = await fetch('/admin/stats', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ senha: senhaDigitada })
+                const tbody = document.getElementById('lista-usuarios');
+                tbody.innerHTML = '';
+                d.usuarios.forEach(u => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:bold; color:#d4af37">${u.user}</td>
+                            <td>${u.email || 'N/A'}</td>
+                            <td><input type="number" step="0.01" id="s-${u.user}" value="${u.saldo.toFixed(2)}"></td>
+                            <td style="color:#2ecc71">R$ ${u.ganhos.toFixed(2)}</td>
+                            <td><button class="btn btn-save" onclick="salvar('${u.user}')">ATUALIZAR</button></td>
+                        </tr>
+                    `;
                 });
-                const d = await res.json();
-
-                if(d.success) {
-                    document.getElementById('login-admin').style.display = 'none';
-                    document.getElementById('painel-conteudo').style.display = 'block';
-                    
-                    let somaBanca = 0;
-                    const tbody = document.getElementById('lista-usuarios');
-                    tbody.innerHTML = '';
-
-                    d.usuarios.forEach(u => {
-                        somaBanca += u.saldo;
-                        tbody.innerHTML += `
-                            <tr>
-                                <td style="color: #d4af37; font-weight: bold;">${u.user}</td>
-                                <td style="color: #888;">${u.email || 'N/A'}</td>
-                                <td><input type="number" step="0.01" id="s-${u.user}" value="${u.saldo.toFixed(2)}"></td>
-                                <td style="color: #2ecc71;">R$ ${u.ganhos.toFixed(2)}</td>
-                                <td><button class="btn btn-save" onclick="salvar('${u.user}')">SALVAR NOVO SALDO</button></td>
-                            </tr>
-                        `;
-                    });
-
-                    document.getElementById('total-banca').innerText = `R$ ${somaBanca.toFixed(2)}`;
-                    document.getElementById('total-users').innerText = d.usuarios.length;
-                } else {
-                    alert(d.message || "Erro ao carregar dados.");
-                }
-            } catch (e) {
-                alert("Erro de conexão com o servidor.");
-            }
+            } else { alert("Senha de Gerente Incorreta!"); }
         }
 
         async function salvar(user) {
             const senha = document.getElementById('senha-admin').value;
             const novoSaldo = document.getElementById(`s-${user}`).value;
-
-            if(!confirm(`Deseja alterar o saldo de ${user} para R$ ${novoSaldo}?`)) return;
-
+            
             const res = await fetch('/admin/edit-saldo', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -130,10 +92,10 @@
             
             const r = await res.json();
             if(r.success) {
-                alert("✅ Saldo de " + user + " atualizado no Banco de Dados!");
-                carregarDados(); // Recarrega a lista
+                alert("Saldo de " + user + " atualizado com sucesso!");
+                carregarDados(); // Recarrega para ver os totais atualizados
             } else {
-                alert("❌ Erro ao salvar saldo.");
+                alert("Erro ao atualizar saldo.");
             }
         }
     </script>
