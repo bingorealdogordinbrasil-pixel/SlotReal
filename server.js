@@ -93,7 +93,7 @@ app.post('/api/saque', async (req, res) => {
     }
 });
 
-// GIRO CORRIGIDO (Multiplicador 10x: R$ 0,50 aposta -> R$ 5,00 ganho)
+// GIRO CONFIGURADO: CADA R$ 0,50 GANHA R$ 5,00 (Multiplicador 10x)
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
@@ -105,11 +105,11 @@ app.post('/api/spin', async (req, res) => {
 
     const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
     
-    // LOGICA FINAL: 0.50 de aposta na cor = 5.00 de prêmio
+    // REGRA: Aposta na cor * 10. (0.50 -> 5.00 | 1.00 -> 10.00)
     const ganho = Number((u.bets[alvo] * 10).toFixed(2));
     const lucroRodada = totalApostado - ganho;
 
-    // Atualiza o lucro da banca no gerente
+    // Salva o lucro real para você ver no painel admin
     await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
     
     const nS = Number((u.saldo + ganho).toFixed(2));
@@ -127,7 +127,7 @@ app.post('/api/admin/list', async (req, res) => {
     res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0, saques });
 });
 
-// PAGAR SAQUE
+// PAGAR SAQUE (LIMPA DA LISTA)
 app.post('/api/admin/pagar-saque', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     await Saque.findByIdAndDelete(req.body.id);
@@ -155,4 +155,4 @@ app.post('/auth/register', async (req, res) => {
 });
 
 app.listen(process.env.PORT || 10000);
-                                      
+            
