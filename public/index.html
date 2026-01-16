@@ -129,6 +129,7 @@
 
     async function sync() {
         const res = await fetch('/api/tempo-real'); const d = await res.json();
+        // Sincronizado para mostrar o tempo corretamente
         document.getElementById('timer').innerText = `${Math.floor(d.segundos/60)}:${(d.segundos%60).toString().padStart(2,'0')}`;
         if(d.segundos === 0 && !bloqueado) rodar();
     }
