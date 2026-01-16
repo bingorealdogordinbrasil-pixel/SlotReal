@@ -125,9 +125,10 @@
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
+        // AQUI MUDOU PARA R$ 10 NOS QUADRADINHOS
         for(let i=0;i<1500;i++){
             const c=document.createElement('div'); c.className='cell'; 
-            c.style.background=CORES[i%10]; c.innerText='R$ 5'; g.appendChild(c);
+            c.style.background=CORES[i%10]; c.innerText='R$ 10'; g.appendChild(c);
         }
         const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
@@ -135,10 +136,15 @@
             d.style.borderBottomColor = c;
             d.innerHTML = `<span>OPÇÃO ${i}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
-                if(state.s>=1 && !rodando){
+                // AQUI MUDOU PARA APOSTAR R$ 0.50 POR CLIQUE
+                if(state.s>=0.5 && !rodando){
                     if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
-                    state.b[i]++; state.s--; updateUI();
+                    state.b[i] = Number((state.b[i] + 0.5).toFixed(2)); 
+                    state.s = Number((state.s - 0.5).toFixed(2));
+                    updateUI();
                     fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
+                } else if(state.s < 0.5) {
+                    toast("Saldo insuficiente!");
                 }
             };
             area.appendChild(d);
@@ -174,7 +180,7 @@
     function updateUI() {
         document.getElementById('balance').innerText = state.s.toFixed(2);
         state.b.forEach((v,i) => {
-            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = `R$ ${v}`;
+            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = `R$ ${v.toFixed(2)}`;
             const card = document.getElementById(`card-${i}`);
             if(card) card.style.background = v > 0 ? "#333" : "var(--card)";
         });
@@ -194,9 +200,18 @@
 
     async function handleSaque() {
         const v = document.getElementById('v-saq').value;
-        const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v})});
+        const pix = document.getElementById('c-pix').value;
+        if(!pix) return toast("Informe o PIX!");
+        const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v,pix:pix})});
         const d = await res.json();
-        if(d.success) { state.s = d.novoSaldo; updateUI(); closeM(); toast("Solicitado!"); } else toast(d.msg);
+        if(d.success) { 
+            state.s = Number((state.s - v).toFixed(2)); 
+            updateUI(); 
+            closeM(); 
+            toast("Solicitado!"); 
+        } else {
+            toast(d.msg);
+        }
     }
 </script>
 </body>
