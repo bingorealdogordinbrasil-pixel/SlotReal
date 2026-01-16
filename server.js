@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741";
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 
-mongoose.connect(MONGO_URI).then(() => console.log("💎 SERVIDOR ONLINE - TUDO CORRIGIDO"));
+mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL GOLD ONLINE"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -82,11 +82,11 @@ app.post('/gerar-pix', (req, res) => {
 
 app.post('/api/saque', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
-    if(u && u.saldo >= req.body.valor) {
+    if(u && u.saldo >= req.body.valor && req.body.valor >= 20) {
         const nS = u.saldo - req.body.valor;
         await User.findOneAndUpdate({ user: u.user }, { saldo: nS });
         res.json({ success: true, novoSaldo: nS });
-    } else res.json({ success: false });
+    } else res.json({ success: false, msg: "Saldo insuficiente ou valor abaixo de R$ 20" });
 });
 
 app.listen(process.env.PORT || 10000);
