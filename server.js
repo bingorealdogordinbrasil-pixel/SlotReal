@@ -12,14 +12,14 @@ const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa93
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 const SENHA_ADMIN = "76811867";
 
-mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO E PIX ATIVO"));
+mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO - SISTEMA DE 8 CORES"));
 
-// BANCO DE DADOS
+// BANCO DE DADOS - AJUSTADO PARA 8 CORES
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
     saldo: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
+    bets: { type: [Number], default: [0,0,0,0,0,0,0,0] } // 8 Cores aqui
 }));
 
 const Stats = mongoose.models.Stats || mongoose.model('Stats', new mongoose.Schema({
@@ -93,32 +93,35 @@ app.post('/api/saque', async (req, res) => {
     }
 });
 
-// GIRO CONFIGURADO: CADA R$ 0,50 GANHA R$ 5,00 (Multiplicador 10x)
+// GIRO CONFIGURADO: APOSTA R$ 1,00 -> GANHA R$ 5,00 (5x)
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
 
     const totalApostado = u.bets.reduce((a, b) => a + b, 0);
+    
+    // Lógica para a banca sempre ganhar: escolhe a cor com menos aposta
     let menor = Math.min(...u.bets);
     let opcoes = [];
     u.bets.forEach((v, i) => { if (v === menor) opcoes.push(i); });
 
     const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
     
-    // REGRA: Aposta na cor * 10. (0.50 -> 5.00 | 1.00 -> 10.00)
-    const ganho = Number((u.bets[alvo] * 10).toFixed(2));
+    // MULTIPLICADOR DE 5x (Apostou 1 ganha 5)
+    const ganho = Number((u.bets[alvo] * 5).toFixed(2));
     const lucroRodada = totalApostado - ganho;
 
-    // Salva o lucro real para você ver no painel admin
     await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
     
     const nS = Number((u.saldo + ganho).toFixed(2));
-    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, bets: [0,0,0,0,0,0,0,0,0,0] } });
+    
+    // Zera as apostas com 8 posições
+    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, bets: [0,0,0,0,0,0,0,0] } });
 
     res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
-// ADMIN LIST (USUÁRIOS, LUCRO E SAQUES)
+// ADMIN LIST
 app.post('/api/admin/list', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     const users = await User.find({}, 'user saldo');
@@ -127,7 +130,7 @@ app.post('/api/admin/list', async (req, res) => {
     res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0, saques });
 });
 
-// PAGAR SAQUE (LIMPA DA LISTA)
+// PAGAR SAQUE
 app.post('/api/admin/pagar-saque', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     await Saque.findByIdAndDelete(req.body.id);
@@ -155,4 +158,3 @@ app.post('/auth/register', async (req, res) => {
 });
 
 app.listen(process.env.PORT || 10000);
-            
