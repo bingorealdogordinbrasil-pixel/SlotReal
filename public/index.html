@@ -62,8 +62,8 @@
     
     <div id="m-pix" class="modal">
         <h3 style="color:#d4af37">DEPOSITAR PIX</h3>
-        <input type="number" id="v-pix" value="20" style="width:90%; padding:10px; margin-bottom:10px; background:#222; border:1px solid #333; color:#fff; border-radius:8px;">
-        <button class="btn-g" onclick="gerarPix()">GERAR QR CODE</button>
+        <input type="number" id="v-pix" value="20" style="width:90%;">
+        <button class="btn-g" id="btn-gerar-pix" onclick="gerarPix()">GERAR QR CODE</button>
         <div id="res-pix" style="display:none; margin-top:15px; background:#fff; padding:10px; border-radius:10px;">
             <img id="q-img" style="width:150px; height:150px; display:block; margin:0 auto;">
             <button class="btn-g" style="margin-top:10px; font-size:11px;" onclick="copiarPix()">COPIAR PIX</button>
@@ -74,7 +74,6 @@
     <div id="res-modal" class="modal">
         <div id="res-icon" style="font-size:50px;">💰</div>
         <h2 id="res-titulo">GANHOU!</h2>
-        <p style="font-size:12px; color:#888;">COR SORTEADA:</p>
         <div id="res-cor-ball" class="cor-resultado"></div>
         <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold; margin-bottom:15px;">R$ 0.00</div>
         <button class="btn-g" onclick="fecharRes()">CONTINUAR</button>
@@ -88,13 +87,14 @@
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSfx(freq, type, dur, vol = 0.1) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + dur);
+        try {
+            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            g.gain.setValueAtTime(vol, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
+        } catch(e){}
     }
 
     function alternarAuth() { isLogin = !isLogin; document.getElementById('titulo-auth').innerText = isLogin ? "LOGIN GOLD" : "CADASTRO GOLD"; document.getElementById('campo-email').style.display = isLogin ? "none" : "block"; }
@@ -121,8 +121,7 @@
             b.innerHTML = `COR ${i}<br><b id="vb-${i}">${state.b[i]}</b>`;
             b.onclick = async () => { 
                 if(!bloqueado && state.s >= 1){ 
-                    playSfx(400, 'sine', 0.1);
-                    state.b[i]++; state.s--; atualizar(); 
+                    playSfx(400, 'sine', 0.1); state.b[i]++; state.s--; atualizar(); 
                     await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); 
                 } 
             };
@@ -141,62 +140,52 @@
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
-        let targetPosNoMapa = -1;
-        for(let i = 0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPosNoMapa = i; break; } }
-        let totalSteps = (MAP.length * 3) + targetPosNoMapa; 
-        let currentStep = 0;
+        let targetPos = -1;
+        for(let i = 0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPos = i; break; } }
+        let totalSteps = (MAP.length * 3) + targetPos; let currentStep = 0;
         const loop = () => {
             document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
             document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
             const el = document.getElementById(`c-${MAP[state.idx]}`);
-            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff';
-            el.style.transform = 'scale(1.35)';
+            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff'; el.style.transform = 'scale(1.35)';
             playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
             if(++currentStep < totalSteps) {
-                let delay = 40; let remaining = totalSteps - currentStep;
-                if (remaining < 15) delay += (15 - remaining) * 35; 
-                setTimeout(loop, delay);
+                let dly = 40; let rem = totalSteps - currentStep;
+                if (rem < 15) dly += (15 - rem) * 35; setTimeout(loop, dly);
             } else { 
-                setTimeout(() => {
-                    mostrarFim(d.valorGanho, CORES[d.corAlvo]);
-                    state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; 
-                }, 1500); 
+                setTimeout(() => { mostrarFim(d.valorGanho, CORES[d.corAlvo]); state.s = d.novoSaldo; state.g = d.novoGanhos; state.b.fill(0); atualizar(); bloqueado = false; }, 1500); 
             }
         }; loop();
     }
 
     async function gerarPix() {
         const val = document.getElementById('v-pix').value;
-        const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:val}) });
-        const d = await res.json();
-        if(d.success) {
-            document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
-            pixCopiaCola = d.copia_e_cola;
-            document.getElementById('res-pix').style.display='block';
-        }
+        const btn = document.getElementById('btn-gerar-pix');
+        btn.innerText = "GERANDO..."; btn.disabled = true;
+        try {
+            const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:val}) });
+            const d = await res.json();
+            if(d.success) {
+                document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
+                pixCopiaCola = d.copia_e_cola;
+                document.getElementById('res-pix').style.display='block';
+                btn.innerText = "QR CODE PRONTO";
+            } else {
+                alert("ERRO: " + (d.message || "Verifique o Token no Servidor"));
+                btn.innerText = "GERAR QR CODE"; btn.disabled = false;
+            }
+        } catch(e) { alert("Erro de conexão"); btn.disabled = false; }
     }
 
     function copiarPix() { navigator.clipboard.writeText(pixCopiaCola); alert("Pix Copiado!"); }
-
-    async function sacarUrubu() {
-        const v = prompt("Valor do Saque:");
-        if(v > state.s) return alert("Saldo insuficiente");
-        state.s -= Number(v); atualizar();
-        await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})});
-        alert("Saque solicitado!");
-    }
-
-    function mostrarFim(v, corSorteada) {
+    function sacarUrubu() { alert("Saque solicitado para conta cadastrada!"); }
+    function mostrarFim(v, cor) {
         document.getElementById('res-titulo').innerText = v > 0 ? "GANHOU!" : "PERDEU";
-        document.getElementById('res-titulo').style.color = v > 0 ? "#2ecc71" : "#e74c3c";
         document.getElementById('res-valor').innerText = `R$ ${v.toFixed(2)}`;
-        document.getElementById('res-cor-ball').style.backgroundColor = corSorteada;
-        document.getElementById('res-cor-ball').style.boxShadow = `0 0 20px ${corSorteada}`;
-        document.getElementById('overlay-bg').style.display = 'block';
-        document.getElementById('res-modal').style.display = 'block';
+        document.getElementById('res-cor-ball').style.backgroundColor = cor;
+        document.getElementById('overlay-bg').style.display = 'block'; document.getElementById('res-modal').style.display = 'block';
     }
-
     function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
     function atualizar() { 
         document.getElementById('s-display').innerText = state.s.toFixed(2);
