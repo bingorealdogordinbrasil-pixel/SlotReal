@@ -9,9 +9,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741".trim();
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-const ADMIN_PASS = "123456"; // Altere esta senha para sua segurança
+const ADMIN_PASS = "123456"; 
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA RESTAURADO E ON"));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ SISTEMA ONLINE - RODADAS DE 30s"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -22,7 +22,16 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// ROTA ADMIN: Estatísticas e Lista de Usuários
+// --- LÓGICA DO TIMER (ALTERADO PARA 30 SEGUNDOS) ---
+let t = 30; 
+setInterval(() => { 
+    if(t > 0) t--; 
+    else t = 30; // Quando chega a 0, reinicia em 30
+}, 1000);
+
+app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
+
+// ROTA ADMIN: Estatísticas
 app.post('/admin/stats', async (req, res) => {
     if(req.body.senha !== ADMIN_PASS) return res.status(403).json({ success: false });
     try {
@@ -40,12 +49,6 @@ app.post('/admin/edit-saldo', async (req, res) => {
         res.json({ success: true });
     } catch (e) { res.json({ success: false }); }
 });
-
-// --- RESTO DAS SUAS ROTAS (LOGIN, SPIN, PIX) MANTIDAS IGUAIS ---
-
-let t = 120;
-setInterval(() => { if(t > 0) t--; else t = 120; }, 1000);
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
