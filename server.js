@@ -14,6 +14,7 @@ const SENHA_ADMIN = "76811867";
 
 mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO E PIX ATIVO"));
 
+// BANCO DE DADOS
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
     pass: String,
@@ -23,6 +24,15 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
 
 const Stats = mongoose.models.Stats || mongoose.model('Stats', new mongoose.Schema({
     lucroTotal: { type: Number, default: 0 }
+}));
+
+// NOVO: BANCO PARA GUARDAR OS SAQUES
+const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Schema({
+    user: String,
+    valor: Number,
+    pix: String,
+    status: { type: String, default: "Pendente" },
+    data: { type: Date, default: Date.now }
 }));
 
 // TIMER DO JOGO
@@ -36,7 +46,7 @@ app.post('/api/save-saldo', async (req, res) => {
     res.json({ success: true });
 });
 
-// GERAR PIX (ORIGINAL E FUNCIONAL)
+// GERAR PIX
 app.post('/gerar-pix', (req, res) => {
     const postData = JSON.stringify({
         transaction_amount: Number(req.body.valor),
@@ -70,7 +80,21 @@ app.post('/gerar-pix', (req, res) => {
     mpReq.end();
 });
 
-// GIRO COM LOGICA DE MENOR APOSTA E LUCRO
+// SOLICITAR SAQUE (PRO USUÁRIO PEDIR)
+app.post('/api/saque', async (req, res) => {
+    const u = await User.findOne({ user: req.body.user });
+    const valor = parseFloat(req.body.valor);
+    if (u && u.saldo >= valor && valor >= 10) {
+        await User.findOneAndUpdate({ user: u.user }, { $inc: { saldo: -valor } });
+        const novo = new Saque({ user: u.user, valor: valor, pix: req.body.pix });
+        await novo.save();
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, msg: "Saldo insuficiente ou valor baixo!" });
+    }
+});
+
+// GIRO COM PRÊMIO DE R$ 5,00 (10x em cima de 0.50)
 app.post('/api/spin', async (req, res) => {
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
@@ -81,7 +105,9 @@ app.post('/api/spin', async (req, res) => {
     u.bets.forEach((v, i) => { if (v === menor) opcoes.push(i); });
 
     const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
-    const ganho = Number((u.bets[alvo] * 5).toFixed(2));
+    
+    // Se ele apostou R$ 0,50, o prêmio é R$ 5,00 (Multiplicador 10x)
+    const ganho = Number((u.bets[alvo] * 10).toFixed(2));
     const lucroRodada = totalApostado - ganho;
 
     await Stats.findOneAndUpdate({}, { $inc: { lucroTotal: lucroRodada } }, { upsert: true });
@@ -91,12 +117,20 @@ app.post('/api/spin', async (req, res) => {
     res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
-// ADMIN LIST COM LUCRO
+// ADMIN LIST (MOSTRA USUÁRIOS, LUCRO E SAQUES PENDENTES)
 app.post('/api/admin/list', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     const users = await User.find({}, 'user saldo');
     const st = await Stats.findOne({});
-    res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0 });
+    const saques = await Saque.find({ status: "Pendente" });
+    res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0, saques });
+});
+
+// MARCAR SAQUE COMO PAGO
+app.post('/api/admin/pagar-saque', async (req, res) => {
+    if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
+    await Saque.findByIdAndDelete(req.body.id);
+    res.json({ success: true });
 });
 
 app.post('/api/admin/bonus', async (req, res) => {
