@@ -11,13 +11,13 @@
         .top-bar { background: rgba(17,17,17,0.95); padding: 12px 20px; display: flex; justify-content: space-between; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); align-items: center; }
         .balance-box { background: #000; border: 1px solid var(--gold); padding: 5px 15px; border-radius: 50px; color: #2ecc71; font-weight: bold; }
         .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; }
+        .btn-white { background: #fff; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; }
         .roleta-container { position: relative; width: 90%; max-width: 360px; margin: 25px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 90px; }
         .cell { min-width: 70px; height: 70px; margin: 0 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; flex-shrink: 0; }
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
         .bet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; }
-        .bet-card { background: var(--card); border-radius: 12px; padding: 10px 5px; border: 1px solid #333; cursor: pointer; transition: 0.3s; border-bottom: 3px solid transparent; }
+        .bet-card { background: var(--card); border-radius: 12px; padding: 10px 5px; border: 1px solid #333; cursor: pointer; border-bottom: 3px solid transparent; }
         .bet-card b { display: block; color: var(--gold); font-size: 15px; margin-top: 5px; }
-        .auth-container { margin-top: 100px; background: var(--card); padding: 30px; border-radius: 25px; border: 1px solid var(--gold); display: inline-block; width: 280px; }
         input { width: 90%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 25px; border-radius: 20px; width: 280px; z-index: 200; border: 1px solid var(--gold); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 150; }
@@ -25,11 +25,16 @@
     </style>
 </head>
 <body>
-    <div id="toast"></div>
-    <div class="overlay" id="ov"></div>
+    <audio id="s-click" src="click.mp3"></audio>
+    <audio id="s-spin" src="spin.mp3"></audio>
+    <audio id="s-win" src="win.mp3"></audio>
+    <audio id="s-loss" src="loss.mp3"></audio>
 
-    <div id="auth-screen">
-        <div class="auth-container">
+    <div id="toast"></div>
+    <div class="overlay" id="ov" onclick="closeM()"></div>
+
+    <div id="auth-screen" style="margin-top: 100px;">
+        <div style="background: var(--card); padding: 30px; border-radius: 25px; border: 1px solid var(--gold); display: inline-block; width: 280px;">
             <h2 style="color:var(--gold); margin:0">SLOTREAL</h2>
             <div id="login-box">
                 <input type="text" id="u" placeholder="Usuário">
@@ -49,7 +54,10 @@
     <div id="game-screen" style="display:none">
         <div class="top-bar">
             <div class="balance-box">💰 R$ <span id="balance">0.00</span></div>
-            <button class="btn-gold" onclick="openM('pix-m')">PIX</button>
+            <div style="display:flex; gap:5px">
+                <button class="btn-gold" onclick="openM('pix-m')">PIX</button>
+                <button class="btn-white" onclick="openM('saque-m')">SAQUE</button>
+            </div>
         </div>
         <h1 id="timer" style="color:var(--gold); font-size:45px; margin:15px 0">00:30</h1>
         <div class="roleta-container">
@@ -62,12 +70,18 @@
     <div class="modal" id="pix-m">
         <h3 style="color:var(--gold)">DEPOSITAR</h3>
         <input type="number" id="v-pix" value="20">
-        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
+        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR QR CODE</button>
         <div id="qr-area" style="display:none; margin-top:15px">
             <img id="qr-img" style="width:150px; background:#fff; padding:5px; border-radius:10px">
             <button class="btn-gold" style="width:100%; margin-top:10px; font-size:12px" onclick="copy()">COPIAR CÓDIGO</button>
         </div>
-        <button class="btn-gold" style="width:100%; margin-top:10px; background:#444; color:#fff" onclick="closeM()">FECHAR</button>
+    </div>
+
+    <div class="modal" id="saque-m">
+        <h3 style="color:var(--gold)">SAQUE</h3>
+        <input type="number" id="v-saq" placeholder="Valor Mínimo 20">
+        <input type="text" id="c-pix" placeholder="Chave PIX">
+        <button class="btn-gold" style="width:100%" onclick="handleSaque()">SOLICITAR</button>
     </div>
 
     <div class="modal" id="win-m">
@@ -79,14 +93,13 @@
 <script>
     let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
     const CORES = ['#FFF','#444','#FF0','#0F0','#F0F','#F00','#00F','#888','#840','#0FF'];
+    const sClick = document.getElementById('s-click'), sSpin = document.getElementById('s-spin'), sWin = document.getElementById('s-win'), sLoss = document.getElementById('s-loss');
 
-    // AO CARREGAR A PÁGINA: Tenta auto-login
     window.onload = () => {
         const saved = localStorage.getItem('slot_user');
         if(saved) {
-            const parsed = JSON.parse(saved);
-            document.getElementById('u').value = parsed.u;
-            document.getElementById('p').value = parsed.p;
+            const p = JSON.parse(saved);
+            document.getElementById('u').value = p.u; document.getElementById('p').value = p.p;
             handleAuth('login');
         }
     };
@@ -106,7 +119,7 @@
                 state.u=d.user; state.s=d.saldo; state.b=d.bets||[0,0,0,0,0,0,0,0,0,0];
                 localStorage.setItem('slot_user', JSON.stringify({u, p}));
                 initGame();
-            } else { toast("Cadastrado! Faça login."); toggleA(false); }
+            } else { toast("Cadastrado!"); toggleA(false); }
         } else toast(d.msg || "Erro!");
     }
 
@@ -124,9 +137,10 @@
             d.innerHTML = `<span>COR ${i}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
                 if(state.s>=1 && !rodando){
+                    sClick.play().catch(()=>{});
                     state.b[i]++; state.s--; updateUI();
                     fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
-                } else if(state.s < 1) toast("Saldo insuficiente!");
+                }
             };
             area.appendChild(d);
         });
@@ -140,14 +154,19 @@
     }
 
     async function spin() {
-        rodando = true;
+        rodando = true; 
+        if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); } // Som de giro começa
+        
         const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
         const g = document.getElementById('grid');
         let cur = Math.round(pos/90)%10, diff = d.corAlvo - cur;
         if(diff <= 0) diff += 10;
         pos += (60 + diff) * 90;
         g.style.transform = `translateX(-${pos - 135}px)`;
+        
         setTimeout(() => {
+            if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; } // Som de giro para
+            if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
             document.getElementById('win-t').innerText = d.valorGanho>0?"GANHOU!":"PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             openM('win-m');
@@ -158,8 +177,7 @@
     function updateUI() {
         document.getElementById('balance').innerText = state.s.toFixed(2);
         state.b.forEach((v,i) => {
-            const el = document.getElementById(`vb-${i}`);
-            if(el) el.innerText = `R$ ${v}`;
+            if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = `R$ ${v}`;
             const card = document.getElementById(`card-${i}`);
             if(card) card.style.background = v > 0 ? "#222" : "var(--card)";
         });
@@ -167,6 +185,7 @@
 
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
+    
     async function getPix() {
         const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:document.getElementById('v-pix').value})});
         const d = await res.json();
@@ -177,6 +196,13 @@
         }
     }
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
+
+    async function handleSaque() {
+        const v = document.getElementById('v-saq').value;
+        const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v})});
+        const d = await res.json();
+        if(d.success) { state.s = d.novoSaldo; updateUI(); closeM(); toast("Saque solicitado!"); } else toast("Erro ou saldo insuficiente!");
+    }
 </script>
 </body>
 </html>
