@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741";
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
 
-mongoose.connect(MONGO_URI).then(() => console.log("✅ SERVIDOR ON - TUDO INTEGRADO"));
+mongoose.connect(MONGO_URI).then(() => console.log("⭐ PLATAFORMA GOLD ONLINE"));
 
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
@@ -21,22 +21,23 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
 
 let t = 30;
 setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
+
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
 
 app.post('/auth/register', async (req, res) => {
     try {
         const existe = await User.findOne({ user: req.body.user });
-        if (existe) return res.json({ success: false });
+        if (existe) return res.json({ success: false, msg: "Este usuário já está em uso." });
         const novo = new User({ user: req.body.user, pass: req.body.pass });
         await novo.save();
-        res.json({ success: true });
-    } catch (e) { res.json({ success: false }); }
+        res.json({ success: true, msg: "Conta criada com sucesso!" });
+    } catch (e) { res.json({ success: false, msg: "Erro interno no servidor." }); }
 });
 
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, user: c.user, saldo: c.saldo });
-    else res.json({ success: false });
+    else res.json({ success: false, msg: "Usuário ou senha incorretos." });
 });
 
 app.post('/api/save-saldo', async (req, res) => {
@@ -59,9 +60,9 @@ app.post('/api/spin', async (req, res) => {
 app.post('/gerar-pix', (req, res) => {
     const postData = JSON.stringify({
         transaction_amount: Number(req.body.valor),
-        description: `Dep_${req.body.user}`,
+        description: `Depósito via App`,
         payment_method_id: "pix",
-        payer: { email: `${req.body.user}@gmail.com`, first_name: req.body.user, identification: { type: "CPF", number: "19119119100" } }
+        payer: { email: `${req.body.user}@gmail.com`, first_name: req.body.user }
     });
     const options = {
         hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
@@ -70,20 +71,13 @@ app.post('/gerar-pix', (req, res) => {
     const mpReq = https.request(options, (mpRes) => {
         let b = ''; mpRes.on('data', d => b += d);
         mpRes.on('end', () => {
-            try { const r = JSON.parse(b); res.json({ success: true, imagem_qr: r.point_of_interaction.transaction_data.qr_code_base64, copia_e_cola: r.point_of_interaction.transaction_data.qr_code }); }
-            catch(e) { res.json({ success: false }); }
+            try { 
+                const r = JSON.parse(b); 
+                res.json({ success: true, qr: r.point_of_interaction.transaction_data.qr_code_base64, code: r.point_of_interaction.transaction_data.qr_code }); 
+            } catch(e) { res.json({ success: false }); }
         });
     });
     mpReq.write(postData); mpReq.end();
-});
-
-app.post('/api/saque', async (req, res) => {
-    const u = await User.findOne({ user: req.body.user });
-    if(u && u.saldo >= req.body.valor) {
-        const nS = u.saldo - req.body.valor;
-        await User.findOneAndUpdate({ user: u.user }, { saldo: nS });
-        res.json({ success: true, novoSaldo: nS });
-    } else res.json({ success: false });
 });
 
 app.listen(10000);
