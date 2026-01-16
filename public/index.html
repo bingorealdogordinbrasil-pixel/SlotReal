@@ -1,88 +1,182 @@
-const express = require('express');
-const path = require('path');
-const mongoose = require('mongoose');
-const https = require('https');
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SlotReal Gold</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #d4af37; --bg: #0b0b0b; --card: #161616; }
+        body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; text-align: center; }
+        .top-bar { background: rgba(17,17,17,0.95); padding: 12px 20px; display: flex; justify-content: space-between; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); align-items: center; }
+        .balance-box { background: #000; border: 1px solid var(--gold); padding: 5px 15px; border-radius: 50px; color: #2ecc71; font-weight: bold; }
+        .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; }
+        .roleta-container { position: relative; width: 90%; max-width: 360px; margin: 25px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 90px; }
+        .cell { min-width: 70px; height: 70px; margin: 0 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; flex-shrink: 0; }
+        .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
+        .bet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; }
+        .bet-card { background: var(--card); border-radius: 12px; padding: 10px 5px; border: 1px solid #333; cursor: pointer; transition: 0.3s; border-bottom: 3px solid transparent; }
+        .bet-card b { display: block; color: var(--gold); font-size: 15px; margin-top: 5px; }
+        .auth-container { margin-top: 100px; background: var(--card); padding: 30px; border-radius: 25px; border: 1px solid var(--gold); display: inline-block; width: 280px; }
+        input { width: 90%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 25px; border-radius: 20px; width: 280px; z-index: 200; border: 1px solid var(--gold); }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 150; }
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; display: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="overlay" id="ov"></div>
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+    <div id="auth-screen">
+        <div class="auth-container">
+            <h2 style="color:var(--gold); margin:0">SLOTREAL</h2>
+            <div id="login-box">
+                <input type="text" id="u" placeholder="Usuário">
+                <input type="password" id="p" placeholder="Senha">
+                <button class="btn-gold" style="width:100%" onclick="handleAuth('login')">ENTRAR</button>
+                <p onclick="toggleA(true)" style="font-size:12px; cursor:pointer; margin-top:15px">Criar conta</p>
+            </div>
+            <div id="reg-box" style="display:none">
+                <input type="text" id="ru" placeholder="Novo Usuário">
+                <input type="password" id="rp" placeholder="Nova Senha">
+                <button class="btn-gold" style="width:100%" onclick="handleAuth('reg')">CADASTRAR</button>
+                <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:15px">Já tenho conta</p>
+            </div>
+        </div>
+    </div>
 
-const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741";
-const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
+    <div id="game-screen" style="display:none">
+        <div class="top-bar">
+            <div class="balance-box">💰 R$ <span id="balance">0.00</span></div>
+            <button class="btn-gold" onclick="openM('pix-m')">PIX</button>
+        </div>
+        <h1 id="timer" style="color:var(--gold); font-size:45px; margin:15px 0">00:30</h1>
+        <div class="roleta-container">
+            <div class="seletor"></div>
+            <div id="grid" style="display:flex; align-items:center; position:absolute; transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1)"></div>
+        </div>
+        <div class="bet-grid" id="bet-grid"></div>
+    </div>
 
-mongoose.connect(MONGO_URI).then(() => console.log("💎 PLATAFORMA GOLD - PERSISTÊNCIA ATIVA"));
+    <div class="modal" id="pix-m">
+        <h3 style="color:var(--gold)">DEPOSITAR</h3>
+        <input type="number" id="v-pix" value="20">
+        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
+        <div id="qr-area" style="display:none; margin-top:15px">
+            <img id="qr-img" style="width:150px; background:#fff; padding:5px; border-radius:10px">
+            <button class="btn-gold" style="width:100%; margin-top:10px; font-size:12px" onclick="copy()">COPIAR CÓDIGO</button>
+        </div>
+        <button class="btn-gold" style="width:100%; margin-top:10px; background:#444; color:#fff" onclick="closeM()">FECHAR</button>
+    </div>
 
-const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
-    user: { type: String, unique: true },
-    pass: String,
-    saldo: { type: Number, default: 0.00 },
-    bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
-}));
+    <div class="modal" id="win-m">
+        <h2 id="win-t" style="margin:0"></h2>
+        <h1 id="win-v" style="color:var(--gold); font-size:35px"></h1>
+        <button class="btn-gold" style="width:100%" onclick="closeM()">OK</button>
+    </div>
 
-let t = 30;
-setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
+<script>
+    let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
+    const CORES = ['#FFF','#444','#FF0','#0F0','#F0F','#F00','#00F','#888','#840','#0FF'];
 
-// CADASTRO
-app.post('/auth/register', async (req, res) => {
-    try {
-        const existe = await User.findOne({ user: req.body.user });
-        if (existe) return res.json({ success: false, msg: "Usuário já existe!" });
-        const novo = new User({ user: req.body.user, pass: req.body.pass });
-        await novo.save();
-        res.json({ success: true, msg: "Cadastrado com sucesso!" });
-    } catch (e) { res.json({ success: false }); }
-});
-
-// LOGIN (RETORNA SALDO E APOSTAS SALVAS)
-app.post('/auth/login', async (req, res) => {
-    const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
-    if (c) res.json({ success: true, user: c.user, saldo: c.saldo, bets: c.bets });
-    else res.json({ success: false, msg: "Dados incorretos!" });
-});
-
-// SALVAR ESTADO (SALDO + APOSTAS)
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
-    res.json({ success: true });
-});
-
-// LÓGICA DE GIRO
-app.post('/api/spin', async (req, res) => {
-    const u = await User.findOne({ user: req.body.user });
-    if(!u) return res.json({ success: false });
-    let menor = Math.min(...u.bets);
-    let opcoes = [];
-    u.bets.forEach((v, i) => { if (v === menor) opcoes.push(i); });
-    const alvo = opcoes[Math.floor(Math.random() * opcoes.length)];
-    const ganho = Number((u.bets[alvo] * 5).toFixed(2));
-    const nS = Number((u.saldo + ganho).toFixed(2));
-    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, bets: [0,0,0,0,0,0,0,0,0,0] } });
-    res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
-});
-
-// PIX
-app.post('/gerar-pix', (req, res) => {
-    const postData = JSON.stringify({
-        transaction_amount: Number(req.body.valor),
-        description: `Depósito_${req.body.user}`,
-        payment_method_id: "pix",
-        payer: { email: `${req.body.user}@gmail.com`, first_name: req.body.user }
-    });
-    const options = {
-        hostname: 'api.mercadopago.com', path: '/v1/payments', method: 'POST',
-        headers: { 'Authorization': `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json' }
+    // AO CARREGAR A PÁGINA: Tenta auto-login
+    window.onload = () => {
+        const saved = localStorage.getItem('slot_user');
+        if(saved) {
+            const parsed = JSON.parse(saved);
+            document.getElementById('u').value = parsed.u;
+            document.getElementById('p').value = parsed.p;
+            handleAuth('login');
+        }
     };
-    const mpReq = https.request(options, (mpRes) => {
-        let b = ''; mpRes.on('data', d => b += d);
-        mpRes.on('end', () => {
-            try { 
-                const r = JSON.parse(b); 
-                res.json({ success: true, qr: r.point_of_interaction.transaction_data.qr_code_base64, code: r.point_of_interaction.transaction_data.qr_code }); 
-            } catch(e) { res.json({ success: false }); }
-        });
-    });
-    mpReq.write(postData); mpReq.end();
-});
 
-app.listen(10000);
+    function toast(m){ const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
+    function toggleA(r){ document.getElementById('login-box').style.display=r?'none':'block'; document.getElementById('reg-box').style.display=r?'block':'none'; }
+    
+    async function handleAuth(type) {
+        const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
+        const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
+        const res = await fetch(type==='login' ? '/auth/login' : '/auth/register', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p})
+        });
+        const d = await res.json();
+        if(d.success) {
+            if(type==='login') {
+                state.u=d.user; state.s=d.saldo; state.b=d.bets||[0,0,0,0,0,0,0,0,0,0];
+                localStorage.setItem('slot_user', JSON.stringify({u, p}));
+                initGame();
+            } else { toast("Cadastrado! Faça login."); toggleA(false); }
+        } else toast(d.msg || "Erro!");
+    }
+
+    function initGame() {
+        document.getElementById('auth-screen').style.display='none';
+        document.getElementById('game-screen').style.display='block';
+        const g = document.getElementById('grid'); g.innerHTML = '';
+        for(let i=0;i<1500;i++){
+            const c=document.createElement('div'); c.className='cell'; c.style.background=CORES[i%10]; c.innerText='R$ 5'; g.appendChild(c);
+        }
+        const area = document.getElementById('bet-grid'); area.innerHTML = '';
+        CORES.forEach((c,i) => {
+            const d = document.createElement('div'); d.className='bet-card'; d.id=`card-${i}`;
+            d.style.borderBottomColor = c;
+            d.innerHTML = `<span>COR ${i}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
+            d.onclick = () => {
+                if(state.s>=1 && !rodando){
+                    state.b[i]++; state.s--; updateUI();
+                    fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
+                } else if(state.s < 1) toast("Saldo insuficiente!");
+            };
+            area.appendChild(d);
+        });
+        updateUI(); setInterval(sync, 1000);
+    }
+
+    async function sync() {
+        const d = await (await fetch('/api/tempo-real')).json();
+        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+        if(d.segundos === 30 && !rodando) spin();
+    }
+
+    async function spin() {
+        rodando = true;
+        const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
+        const g = document.getElementById('grid');
+        let cur = Math.round(pos/90)%10, diff = d.corAlvo - cur;
+        if(diff <= 0) diff += 10;
+        pos += (60 + diff) * 90;
+        g.style.transform = `translateX(-${pos - 135}px)`;
+        setTimeout(() => {
+            document.getElementById('win-t').innerText = d.valorGanho>0?"GANHOU!":"PERDEU";
+            document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
+            openM('win-m');
+            state.s=d.novoSaldo; state.b.fill(0); updateUI(); rodando=false;
+        }, 6500);
+    }
+
+    function updateUI() {
+        document.getElementById('balance').innerText = state.s.toFixed(2);
+        state.b.forEach((v,i) => {
+            const el = document.getElementById(`vb-${i}`);
+            if(el) el.innerText = `R$ ${v}`;
+            const card = document.getElementById(`card-${i}`);
+            if(card) card.style.background = v > 0 ? "#222" : "var(--card)";
+        });
+    }
+
+    function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
+    function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
+    async function getPix() {
+        const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:document.getElementById('v-pix').value})});
+        const d = await res.json();
+        if(d.success) {
+            document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
+            document.getElementById('qr-area').setAttribute('data-c', d.code);
+            document.getElementById('qr-area').style.display='block';
+        }
+    }
+    function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
+</script>
+</body>
+</html>
