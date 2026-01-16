@@ -7,9 +7,10 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// CREDENCIAIS ATUALIZADAS
 const MP_TOKEN = "APP_USR-480319563212549-011210-80973eae502f42ff3dfbc0cb456aa930-485513741";
 const MONGO_URI = "mongodb+srv://SlotReal:A1l9a9n7@cluster0.ap7q4ev.mongodb.net/SlotGame?retryWrites=true&w=majority";
-const SENHA_ADMIN = "1234"; // VOCÊ PODE MUDAR ESSA SENHA AQUI
+const SENHA_ADMIN = "76811867"; // SENHA ATUALIZADA
 
 mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL GOLD ATIVADO"));
 
@@ -20,7 +21,7 @@ const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema(
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0,0,0] }
 }));
 
-// TIMER E ROTAS DE JOGO (Mantidas do anterior)
+// TIMER E ROTAS DE JOGO
 let t = 30;
 setInterval(() => { if(t > 0) t--; else t = 30; }, 1000);
 app.get('/api/tempo-real', (req, res) => res.json({ segundos: t }));
@@ -69,15 +70,12 @@ app.post('/gerar-pix', (req, res) => {
 });
 
 // --- ÁREA DO GERENTE (ADMIN) ---
-
-// Listar usuários com proteção de senha
 app.post('/api/admin/list', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false, msg: "Senha Incorreta" });
     const users = await User.find({}, 'user saldo');
     res.json({ success: true, users });
 });
 
-// Adicionar Bônus
 app.post('/api/admin/bonus', async (req, res) => {
     if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
     const u = await User.findOne({ user: req.body.user });
