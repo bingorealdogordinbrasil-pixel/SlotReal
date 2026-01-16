@@ -18,7 +18,7 @@
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
         .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.75); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; backdrop-filter: blur(4px); }
-        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: all 0.1s; border: 1px solid rgba(212, 175, 55, 0.1); }
         .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
         .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
         
@@ -109,12 +109,22 @@
     function iniciar() {
         document.getElementById('tela-login').style.display='none'; document.getElementById('tela-jogo').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
+        
+        // AJUSTE: Só uma de cada cor no tabuleiro
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
-            const p = MAP.indexOf(i); 
-            if(p !== -1) { c.style.background = CORES[p % 10]; c.innerText = 'R$5'; } else { c.style.opacity = '0.05'; }
+            const posNoMapa = MAP.indexOf(i); 
+            
+            // Verifica se a posição no mapa corresponde ao primeiro slot de cada cor (0 a 9)
+            if(posNoMapa !== -1 && posNoMapa < 10) { 
+                c.style.background = CORES[posNoMapa]; 
+                c.innerText = 'R$5'; 
+            } else {
+                c.style.opacity = '0.05'; // Outras células do caminho ficam transparentes
+            }
             g.appendChild(c);
         }
+
         const area = document.getElementById('bet-area'); area.innerHTML = '';
         CORES.forEach((c, i) => {
             const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = c;
@@ -140,15 +150,22 @@
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
-        let targetPos = -1;
-        for(let i = 0; i < MAP.length; i++) { if(i % 10 === d.corAlvo) { targetPos = i; break; } }
-        let totalSteps = (MAP.length * 3) + targetPos; let currentStep = 0;
+        
+        // O alvo agora será sempre um dos 10 primeiros índices do MAP (onde as cores estão)
+        let targetPos = d.corAlvo; 
+        let totalSteps = (MAP.length * 3) + targetPos; 
+        let currentStep = 0;
+
         const loop = () => {
             document.getElementById(`c-${MAP[state.idx]}`).style.boxShadow = 'none';
             document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
             const el = document.getElementById(`c-${MAP[state.idx]}`);
-            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff'; el.style.transform = 'scale(1.35)';
+            
+            // Destaca a célula atual da roleta
+            el.style.boxShadow = '0 0 30px #fff, inset 0 0 15px #fff'; 
+            el.style.transform = 'scale(1.35)';
+            
             playSfx(150 + (currentStep * 2), 'square', 0.05, 0.05);
             if(++currentStep < totalSteps) {
                 let dly = 40; let rem = totalSteps - currentStep;
