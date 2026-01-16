@@ -3,174 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal - Premium Gold</title>
+    <title>SlotReal Gold</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
-        .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #051a05; background-image: radial-gradient(#114411 1px, transparent 1px); background-size: 25px 25px; z-index: -1; }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
+        .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(#114411 1px, #051a05 1px); background-size: 25px 25px; z-index: -1; }
         .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
-        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
-        
-        .game-container { position: relative; max-width: 340px; margin: 20px auto; }
-        .centro-gold { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; pointer-events: none; }
-        .money-bag { font-size: 80px; filter: drop-shadow(0 0 20px #d4af37); animation: pulse 1.5s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.8); border-radius: 10px; border: 2px solid #d4af37; position: relative; z-index: 2; }
-        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: transform 0.1s; }
-        
-        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 10px; max-width: 360px; margin: auto; }
-        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
-        
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; box-shadow: 0 0 50px #000; }
-        #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; }
-        .cor-resultado { width: 50px; height: 50px; border-radius: 50%; border: 3px solid #fff; margin: 15px auto; }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 10px; background: rgba(0,0,0,0.8); border-radius: 10px; border: 2px solid #d4af37; max-width: 340px; margin: 20px auto; }
+        .cell { width: 35px; height: 35px; border-radius: 5px; font-size: 8px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; transition: 0.1s; }
+        .btn-bet { background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 10px; border: 1px solid #333; cursor: pointer; color:#fff; border-bottom: 4px solid transparent; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; }
     </style>
 </head>
 <body>
     <div class="money-bg"></div>
 
-    <div id="tela-login">
-        <div style="margin-top:80px; background:#111; padding:30px; border-radius:20px; border:1px solid #d4af37; display:inline-block;">
-            <h2 style="color:#d4af37">LOGIN GOLD</h2>
-            <input type="text" id="u" placeholder="Usuário" style="padding:12px; margin:10px 0; border-radius:8px;">
-            <input type="password" id="p" placeholder="Senha" style="padding:12px; margin:10px 0; border-radius:8px;">
-            <button class="btn-g" onclick="auth()" style="width:100%">ENTRAR</button>
-        </div>
-    </div>
-
-    <div id="tela-jogo" style="display:none">
+    <div id="tela-jogo">
         <div class="top-bar">
-            <div style="background:#000; padding:5px 15px; border-radius:20px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
-            <button onclick="abrirM('m-pix')" style="background:#009ee3; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
+            <div style="color:#2ecc71; font-weight:bold;">Saldo: R$ <span id="s-display">0.00</span></div>
+            <button onclick="document.getElementById('m-pix').style.display='block'; document.getElementById('overlay').style.display='block';" style="background:#009ee3; color:#fff; border:none; padding:5px 10px; border-radius:5px; font-weight:bold;">DEPOSITAR</button>
         </div>
-        <h2 id="timer" style="color:#d4af37; font-size: 45px; margin:15px 0;">00:30</h2>
-        
-        <div class="game-container">
-            <div class="centro-gold"><div class="money-bag">💰</div></div>
-            <div id="grid" class="grid"></div>
-        </div>
-        <div id="bet-area" class="bet-area"></div>
+        <h2 id="timer" style="color:#d4af37; font-size: 40px; margin: 15px 0;">00:30</h2>
+        <div id="grid" class="grid"></div>
+        <div id="bet-area" class="bet-area" style="display:grid; grid-template-columns: repeat(5,1fr); gap:5px; padding:10px;"></div>
     </div>
 
-    <div id="overlay-bg"></div>
-    
+    <div id="overlay"></div>
     <div id="m-pix" class="modal">
-        <h3 style="color:#d4af37">DEPOSITAR VIA PIX</h3>
-        <input type="number" id="v-pix" placeholder="Valor (R$)" value="20" style="width:80%; padding:10px; margin-bottom:10px;">
-        <button class="btn-g" onclick="gerarPix()">GERAR CÓDIGO</button>
-        
-        <div id="res-pix" style="display:none; margin-top:15px; background:#fff; padding:10px; border-radius:10px;">
-            <img id="q-img" style="width:160px; height:160px; display:block; margin:0 auto;">
-            <input type="text" id="pix-copy" readonly style="width:100%; font-size:9px; color:#000; margin-top:5px; border:1px solid #ccc;">
-            <button class="btn-g" style="margin-top:10px; font-size:11px;" onclick="copiarPix()">COPIAR PIX</button>
+        <h3 style="color:#d4af37">DEPOSITAR PIX</h3>
+        <input type="number" id="v-pix" value="20" style="width:80%; padding:10px; margin-bottom:10px; border-radius:5px;">
+        <button onclick="gerarPix()" style="background:#d4af37; width:100%; padding:10px; border:none; border-radius:5px; font-weight:bold;">GERAR QR CODE</button>
+        <div id="res-pix" style="display:none; margin-top:10px; background:#fff; padding:10px; border-radius:10px;">
+            <img id="q-img" style="width:150px; height:150px; display:block; margin:0 auto;">
+            <button onclick="copiarPix()" style="width:100%; margin-top:5px; font-size:10px;">COPIAR CÓDIGO</button>
         </div>
-        
-        <p onclick="fecharM()" style="color:#e74c3c; cursor:pointer; margin-top:15px;">FECHAR</p>
-    </div>
-
-    <div id="res-modal" class="modal">
-        <h2 id="res-titulo">GANHOU!</h2>
-        <div id="res-cor-ball" class="cor-resultado"></div>
-        <div id="res-valor" style="font-size:35px; color:#2ecc71; font-weight:bold;">R$ 0.00</div>
-        <button class="btn-g" onclick="fecharM()">CONTINUAR</button>
+        <p onclick="document.getElementById('m-pix').style.display='none'; document.getElementById('overlay').style.display='none';" style="color:red; cursor:pointer; font-size:12px; margin-top:10px;">FECHAR</p>
     </div>
 
 <script>
-    let state = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 };
+    let state = { u: 'UserTeste', s: 50.00, b: [0,0,0,0,0,0,0,0,0,0], idx: 0 }; // u deve vir do login real
     let bloqueado = false;
-    
-    // AS CORES ORIGINAIS PROFISSIONAIS
-    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#808', '#840'];
+    const CORES = ['#FFFFFF', '#444444', '#FFFF00', '#00FF00', '#FF00FF', '#FF0000', '#0000FF', '#CCCCCC', '#800080', '#FFA500'];
     const MAP = [0,1,2,3,4,5,6,7,15,23,31,39,47,55,63,62,61,60,59,58,57,56,48,40,32,24,16,8];
-
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function bip(f, d) {
-        try {
-            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            o.type = 'sine'; o.frequency.value = f; g.gain.value = 0.05;
-            o.connect(g); g.connect(audioCtx.destination);
-            o.start(); o.stop(audioCtx.currentTime + d);
-        } catch(e){}
-    }
 
-    async function auth() {
-        const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:document.getElementById('u').value, pass:document.getElementById('p').value}) });
-        const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo; iniciar(); }
-    }
+    function bip(f, d) { try { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type='sine'; o.frequency.value=f; g.gain.value=0.05; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+d); } catch(e){} }
 
-    function iniciar() {
-        document.getElementById('tela-login').style.display='none'; 
-        document.getElementById('tela-jogo').style.display='block';
+    function montarGrid() {
         const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=0; i<64; i++){
             const c = document.createElement('div'); c.className = 'cell'; c.id = `c-${i}`;
             const pos = MAP.indexOf(i); 
-            if(pos !== -1) {
-                c.style.background = CORES[pos % 10]; // Sincronia de cor exata
-                c.innerText = 'R$5';
-            } else { c.style.opacity = '0.05'; }
+            if(pos !== -1) { c.style.background = CORES[pos % 10]; c.innerText = 'X5'; } else c.style.opacity = '0.05';
             g.appendChild(c);
         }
         const area = document.getElementById('bet-area'); area.innerHTML = '';
         CORES.forEach((cor, i) => {
-            const b = document.createElement('div'); b.className = 'btn-bet';
-            b.style.borderBottomColor = cor;
+            const b = document.createElement('div'); b.className = 'btn-bet'; b.style.borderBottomColor = cor;
             b.innerHTML = `COR ${i}<br><b id="vb-${i}">0</b>`;
-            b.onclick = async () => { 
-                if(!bloqueado && state.s >= 1){ 
-                    bip(400, 0.1); state.b[i]++; state.s--; atualizar(); 
-                    await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})});
-                } 
-            };
+            b.onclick = async () => { if(!bloqueado && state.s >= 1){ bip(400, 0.1); state.b[i]++; state.s--; atualizar(); await fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})}); } };
             area.appendChild(b);
         });
-        setInterval(async () => {
-            const r = await fetch('/api/tempo-real'); const d = await r.json();
-            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-            if(d.segundos === 0 && !bloqueado) rodar();
-        }, 1000);
     }
 
     async function rodar() {
         bloqueado = true;
         const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
         const d = await res.json();
-        let tIdx = -1;
-        for(let i=0; i<MAP.length; i++) { if((i % 10) === d.corAlvo) { tIdx = i; break; } }
-        let voltas = (MAP.length * 3) + tIdx; let passadas = 0;
-        const girar = () => {
+        let tIdx = -1; for(let i=0; i<MAP.length; i++) { if((i % 10) === d.corAlvo) { tIdx = i; break; } }
+        let voltas = (MAP.length * 3) + tIdx; let cur = 0;
+        const loop = () => {
             document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1)';
             state.idx = (state.idx + 1) % MAP.length;
-            const el = document.getElementById(`c-${MAP[state.idx]}`);
-            el.style.transform = 'scale(1.4)';
-            bip(200 + (passadas*2), 0.05);
-            if(++passadas < voltas) setTimeout(girar, 45 + (passadas > voltas-15 ? (passadas-(voltas-15))*30 : 0));
-            else { 
-                setTimeout(() => {
-                    document.getElementById('res-valor').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
-                    document.getElementById('res-cor-ball').style.backgroundColor = CORES[d.corAlvo];
-                    abrirM('res-modal');
-                    state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false;
-                }, 1000);
-            }
-        }; girar();
+            document.getElementById(`c-${MAP[state.idx]}`).style.transform = 'scale(1.4)';
+            bip(200+(cur*2), 0.05);
+            if(++cur < voltas) setTimeout(loop, 45 + (cur > voltas-12 ? (cur-(voltas-12))*30 : 0));
+            else { alert("Ganhou: R$ " + d.valorGanho); state.s = d.novoSaldo; state.b.fill(0); atualizar(); bloqueado = false; }
+        }; loop();
     }
 
     async function gerarPix() {
         const res = await fetch('/gerar-pix', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userLogado:state.u, valor:document.getElementById('v-pix').value}) });
         const d = await res.json();
-        if(d.success) {
-            document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr;
-            document.getElementById('pix-copy').value = d.copia_e_cola;
-            document.getElementById('res-pix').style.display='block';
-        }
+        if(d.success) { document.getElementById('q-img').src = "data:image/png;base64," + d.imagem_qr; document.getElementById('res-pix').style.display='block'; }
     }
 
-    function copiarPix() { const i = document.getElementById('pix-copy'); i.select(); document.execCommand('copy'); alert("Copiado!"); }
-    function abrirM(id) { document.getElementById(id).style.display='block'; document.getElementById('overlay-bg').style.display='block'; }
-    function fecharM() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); document.getElementById('overlay-bg').style.display='none'; }
     function atualizar() { document.getElementById('s-display').innerText = state.s.toFixed(2); state.b.forEach((v,i) => document.getElementById(`vb-${i}`).innerText = v); }
+    setInterval(async () => { const r = await fetch('/api/tempo-real'); const d = await r.json(); document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`; if(d.segundos === 0 && !bloqueado) rodar(); }, 1000);
+    montarGrid(); atualizar();
 </script>
 </body>
 </html>
