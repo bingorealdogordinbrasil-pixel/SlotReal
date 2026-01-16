@@ -75,7 +75,7 @@
 
     <div class="modal" id="pix-m">
         <h3 style="color:var(--gold); margin:0">DEPOSITAR</h3>
-        <input type="number" id="v-pix" value="20">
+        <input type="number" id="v-pix" value="5">
         <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
         <div id="qr-area" style="display:none; margin-top:15px">
             <img id="qr-img" style="width:140px; background:#fff; padding:5px; border-radius:10px">
@@ -125,7 +125,6 @@
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        // CORRIGIDO: MOSTRANDO R$ 5 NOS QUADRADOS
         for(let i=0;i<1200;i++){
             const c=document.createElement('div'); c.className='cell'; 
             c.style.background=CORES[i%8]; c.innerText='R$ 5'; g.appendChild(c);
@@ -136,7 +135,6 @@
             d.style.borderBottomColor = c;
             d.innerHTML = `<span>OPÇÃO ${i+1}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
-                // CLIQUE GASTA R$ 1
                 if(state.s>=1 && !rodando){
                     if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
                     state.b[i]++; state.s--; updateUI();
@@ -182,14 +180,20 @@
         });
     }
 
+    // FUNÇÃO GETPIX ATUALIZADA COM MENSAGEM DE R$ 5
     async function getPix() {
-        const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:document.getElementById('v-pix').value})});
+        const valor = document.getElementById('v-pix').value;
+        if(valor < 5) {
+            toast("O valor mínimo de depósito é R$ 5");
+            return;
+        }
+        const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:valor})});
         const d = await res.json();
         if(d.success) {
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
             document.getElementById('qr-area').style.display='block';
-        } else toast("Erro!");
+        } else toast(d.msg || "Erro!");
     }
 
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
