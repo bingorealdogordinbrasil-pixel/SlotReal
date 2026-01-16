@@ -3,143 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal - Gold</title>
+    <title>SlotReal Gold</title>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
-        .money-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #051a05; background-image: radial-gradient(#114411 1px, transparent 1px); background-size: 25px 25px; z-index: -1; }
-        .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; }
-        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; color: #000; text-transform: uppercase; }
-        .roleta-container { position: relative; width: 340px; margin: 30px auto; overflow: hidden; background: #111; border: 4px solid #d4af37; border-radius: 15px; height: 100px; }
+        .top-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid #d4af37; position: sticky; top: 0; z-index: 10; align-items: center; }
+        .btn-g { background: linear-gradient(180deg, #d4af37 0%, #a68a2d 100%); border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; text-transform: uppercase; }
+        .roleta-container { position: relative; width: 340px; margin: 20px auto; overflow: hidden; background: #111; border: 4px solid #d4af37; border-radius: 15px; height: 100px; }
         .roleta-track { display: flex; align-items: center; position: absolute; left: 0; top: 0; height: 100%; }
         .cell { min-width: 80px; height: 80px; margin: 0 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #000; flex-shrink: 0; }
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 6px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
-        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 15px; max-width: 400px; margin: auto; }
-        .btn-bet { background: #1a1a1a; padding: 10px; border-radius: 8px; font-size: 11px; border: 1px solid #333; border-bottom: 4px solid transparent; cursor: pointer; color:#fff; }
-        .v-bet { color: #2ecc71; font-weight: bold; font-size: 14px; display: block; }
-        .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 300px; }
+        .bet-area { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 15px; }
+        .btn-bet { background: #1a1a1a; padding: 10px; border-radius: 8px; font-size: 11px; border: 1px solid #333; cursor: pointer; color:#fff; border-bottom: 3px solid transparent; }
+        .v-bet { color: #2ecc71; font-weight: bold; display: block; }
+        .card-auth { margin-top: 50px; display: inline-block; background: #111; padding: 25px; border-radius: 20px; border: 1px solid #d4af37; width: 280px; }
         input { width: 90%; padding: 12px; margin: 8px 0; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 25px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
-        #overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; backdrop-filter: blur(8px); }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 20px; border-radius: 20px; width: 280px; z-index: 100; border: 2px solid #d4af37; }
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 99; }
     </style>
 </head>
 <body>
-    <div class="money-bg"></div>
-
     <div id="auth-area">
-        <div class="card-auth" id="login-box">
+        <div class="card-auth" id="box-login">
             <h2 style="color:#d4af37">LOGIN</h2>
             <input type="text" id="u" placeholder="Usuário">
             <input type="password" id="p" placeholder="Senha">
-            <button class="btn-g" style="width:100%" onclick="auth()">ENTRAR</button>
-            <p onclick="toggleAuth(true)" style="cursor:pointer; font-size:12px; margin-top:15px; text-decoration:underline;">Criar Conta</p>
+            <button class="btn-g" style="width:100%" onclick="login()">ENTRAR</button>
+            <p onclick="toggleA(true)" style="cursor:pointer; text-decoration:underline; font-size:12px">Criar Conta</p>
         </div>
-        <div class="card-auth" id="reg-box" style="display:none">
+        <div class="card-auth" id="box-reg" style="display:none">
             <h2 style="color:#d4af37">CADASTRO</h2>
-            <input type="text" id="ru" placeholder="Novo Usuário">
-            <input type="password" id="rp" placeholder="Nova Senha">
-            <button class="btn-g" style="width:100%" onclick="cadastrar()">CADASTRAR</button>
-            <p onclick="toggleAuth(false)" style="cursor:pointer; font-size:12px; margin-top:15px; text-decoration:underline;">Já tenho conta</p>
+            <input type="text" id="ru" placeholder="Usuário">
+            <input type="password" id="rp" placeholder="Senha">
+            <button class="btn-g" style="width:100%" onclick="reg()">CADASTRAR</button>
+            <p onclick="toggleA(false)" style="cursor:pointer; text-decoration:underline; font-size:12px">Já tenho conta</p>
         </div>
     </div>
 
     <div id="jogo-area" style="display:none">
         <div class="top-bar">
-            <div style="background:#000; padding:5px 15px; border:1px solid #d4af37;">💰 <b id="s-display" style="color:#2ecc71">0.00</b></div>
-            <h3 id="timer" style="color:#d4af37; margin:0">00:30</h3>
+            <div style="color:#2ecc71; font-weight:bold">R$ <span id="s-disp">0.00</span></div>
+            <button class="btn-g" onclick="openM('pix-m')">PIX</button>
+            <button class="btn-g" style="background:#fff" onclick="openM('saque-m')">SAQUE</button>
         </div>
-        <div class="roleta-container">
-            <div class="seletor"></div>
-            <div id="grid" class="roleta-track"></div>
-        </div>
+        <h1 id="timer" style="color:#d4af37; font-size:45px">00:30</h1>
+        <div class="roleta-container"><div class="seletor"></div><div id="grid" class="roleta-track"></div></div>
         <div id="bet-area" class="bet-area"></div>
     </div>
 
-    <div id="overlay-bg"></div>
-    <div id="res-modal" class="modal">
-        <h2 id="res-titulo"></h2>
-        <div id="res-valor" style="font-size:30px; color:#2ecc71; font-weight:bold;"></div>
-        <button class="btn-g" onclick="fecharRes()" style="margin-top:15px">FECHAR</button>
+    <div id="overlay"></div>
+    <div id="pix-m" class="modal">
+        <h3>DEPOSITAR</h3>
+        <input type="number" id="v-pix" value="20">
+        <button class="btn-g" onclick="gerarP()">GERAR</button>
+        <div id="qr-area" style="display:none; margin-top:10px">
+            <img id="qri" style="width:150px; background:#fff">
+            <button class="btn-g" style="font-size:10px" onclick="copy()">COPIAR PIX</button>
+        </div>
+        <button onclick="closeM()" style="margin-top:10px">FECHAR</button>
+    </div>
+
+    <div id="saque-m" class="modal">
+        <h3>SAQUE</h3>
+        <input type="number" id="v-saq" placeholder="Valor">
+        <input type="text" placeholder="Chave PIX">
+        <button class="btn-g" onclick="saque()">CONFIRMAR</button>
+        <button onclick="closeM()" style="margin-top:10px">FECHAR</button>
     </div>
 
 <script>
-    let state = { u: '', s: 0, b: [0,0,0,0,0,0,0,0,0,0] };
-    let rodandoAgora = false, posicaoAtual = 0;
-    const CORES = ['#FFF', '#444', '#FF0', '#0F0', '#F0F', '#F00', '#00F', '#888', '#840', '#0FF'];
+    let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
+    const CORES = ['#FFF','#444','#FF0','#0F0','#F0F','#F00','#00F','#888','#840','#0FF'];
 
-    function toggleAuth(reg) {
-        document.getElementById('login-box').style.display = reg ? 'none' : 'block';
-        document.getElementById('reg-box').style.display = reg ? 'block' : 'none';
+    function toggleA(r){ document.getElementById('box-login').style.display=r?'none':'block'; document.getElementById('box-reg').style.display=r?'block':'none'; }
+    async function reg(){
+        const res = await fetch('/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:document.getElementById('ru').value,pass:document.getElementById('rp').value})});
+        if((await res.json()).success) { alert("Ok!"); toggleA(false); }
     }
-
-    async function cadastrar() {
-        const u = document.getElementById('ru').value, p = document.getElementById('rp').value;
-        const res = await fetch('/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p}) });
+    async function login(){
+        const res = await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:document.getElementById('u').value,pass:document.getElementById('p').value})});
         const d = await res.json();
-        if(d.success) { alert("Sucesso! Logue agora."); toggleAuth(false); } else alert("Erro ou usuário já existe.");
+        if(d.success){ state.u=d.user; state.s=d.saldo; start(); }
     }
-
-    async function auth() {
-        const u = document.getElementById('u').value, p = document.getElementById('p').value;
-        const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p}) });
-        const d = await res.json();
-        if(d.success) { state.u = d.user; state.s = d.saldo; iniciar(); } else alert("Login falhou!");
-    }
-
-    function iniciar() {
-        document.getElementById('auth-area').style.display='none'; 
-        document.getElementById('jogo-area').style.display='block';
+    function start(){
+        document.getElementById('auth-area').style.display='none'; document.getElementById('jogo-area').style.display='block';
         const g = document.getElementById('grid');
-        for(let i=0; i < 2000; i++){
-            const c = document.createElement('div'); c.className = 'cell';
-            c.style.background = CORES[i % 10]; c.innerText = 'R$ 5'; g.appendChild(c);
-        }
-        const area = document.getElementById('bet-area');
-        CORES.forEach((c, i) => {
-            const b = document.createElement('div'); b.className = 'btn-bet';
-            b.style.borderBottomColor = c; b.innerHTML = `COR ${i}<br><span class="v-bet" id="vb-${i}">0</span>`;
-            b.onclick = () => {
-                if(state.s >= 1 && !rodandoAgora) {
-                    state.b[i] += 1; state.s -= 1; atualizar();
-                    fetch('/api/save-saldo', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u, saldo:state.s, bets:state.b})});
-                }
-            };
-            area.appendChild(b);
+        for(let i=0;i<1500;i++){ const c=document.createElement('div'); c.className='cell'; c.style.background=CORES[i%10]; c.innerText='R$ 5'; g.appendChild(c); }
+        CORES.forEach((c,i)=>{
+            const b=document.createElement('div'); b.className='btn-bet'; b.style.borderBottomColor=c;
+            b.innerHTML=`COR ${i}<br><span class="v-bet" id="vb-${i}">0</span>`;
+            b.onclick=()=>{ if(state.s>=1 && !rodando){ state.b[i]++; state.s--; upd(); fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})}); } };
+            document.getElementById('bet-area').appendChild(b);
         });
-        setInterval(sync, 1000);
+        upd(); setInterval(sync, 1000);
     }
-
-    async function sync() {
-        const res = await fetch('/api/tempo-real');
-        const d = await res.json();
+    async function sync(){
+        const d = await (await fetch('/api/tempo-real')).json();
         document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-        if(d.segundos === 30 && !rodandoAgora) rodar();
+        if(d.segundos === 30 && !rodando) spin();
     }
-
-    async function rodar() {
-        rodandoAgora = true;
-        const res = await fetch('/api/spin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:state.u}) });
-        const d = await res.json();
+    async function spin(){
+        rodando = true;
+        const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
         const track = document.getElementById('grid');
-        let index = Math.round(posicaoAtual / 100) % 10;
-        let diff = (d.corAlvo - index);
-        if (diff <= 0) diff += 10;
-        posicaoAtual += (60 + diff) * 100;
+        let idx = Math.round(pos/100)%10, diff = d.corAlvo - idx;
+        if(diff<=0) diff+=10;
+        pos += (60 + diff)*100;
         track.style.transition = "transform 6s cubic-bezier(0.1, 0, 0.1, 1)";
-        track.style.transform = `translateX(-${posicaoAtual - 120}px)`;
-        setTimeout(() => {
-            document.getElementById('res-titulo').innerText = d.valorGanho > 0 ? "GANHOU!" : "PERDEU";
-            document.getElementById('res-valor').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
-            document.getElementById('overlay-bg').style.display = 'block';
-            document.getElementById('res-modal').style.display = 'block';
-            state.s = d.novoSaldo; state.b.fill(0); atualizar();
-            rodandoAgora = false;
-        }, 7000);
+        track.style.transform = `translateX(-${pos - 120}px)`;
+        setTimeout(()=>{ alert(d.valorGanho>0?"GANHOU!":"PERDEU"); state.s=d.novoSaldo; state.b.fill(0); upd(); rodando=false; }, 7000);
     }
-
-    function fecharRes() { document.getElementById('res-modal').style.display='none'; document.getElementById('overlay-bg').style.display='none'; }
-    function atualizar() {
-        document.getElementById('s-display').innerText = state.s.toFixed(2);
-        state.b.forEach((v, i) => { if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText = v; });
+    function upd(){ document.getElementById('s-disp').innerText=state.s.toFixed(2); state.b.forEach((v,i)=>{ if(document.getElementById(`vb-${i}`)) document.getElementById(`vb-${i}`).innerText=v; }); }
+    function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('overlay').style.display='block'; }
+    function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('overlay').style.display='none'; }
+    async function gerarP(){
+        const d = await (await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:document.getElementById('v-pix').value})})).json();
+        if(d.success){ document.getElementById('qri').src=`data:image/jpeg;base64,${d.imagem_qr}`; document.getElementById('qr-area').setAttribute('data-copy', d.copia_e_cola); document.getElementById('qr-area').style.display='block'; }
+    }
+    function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-copy')); alert("Copiado!"); }
+    async function saque(){
+        const d = await (await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:document.getElementById('v-saq').value})})).json();
+        if(d.success){ state.s=d.novoSaldo; upd(); closeM(); alert("Saque solicitado!"); }
     }
 </script>
 </body>
