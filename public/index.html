@@ -70,7 +70,7 @@
     <div class="modal" id="pix-m">
         <h3 style="color:var(--gold)">DEPOSITAR</h3>
         <input type="number" id="v-pix" value="20">
-        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR QR CODE</button>
+        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
         <div id="qr-area" style="display:none; margin-top:15px">
             <img id="qr-img" style="width:150px; background:#fff; padding:5px; border-radius:10px">
             <button class="btn-gold" style="width:100%; margin-top:10px; font-size:12px" onclick="copy()">COPIAR CÓDIGO</button>
@@ -154,8 +154,9 @@
     }
 
     async function spin() {
-        rodando = true; 
-        if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); } // Som de giro começa
+        rodando = true;
+        // 🔊 INICIA SOM DE GIRO
+        if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); }
         
         const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
         const g = document.getElementById('grid');
@@ -165,7 +166,9 @@
         g.style.transform = `translateX(-${pos - 135}px)`;
         
         setTimeout(() => {
-            if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; } // Som de giro para
+            // 🔇 PARA SOM DE GIRO
+            if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
+            
             if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
             document.getElementById('win-t').innerText = d.valorGanho>0?"GANHOU!":"PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
@@ -193,15 +196,16 @@
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
             document.getElementById('qr-area').style.display='block';
-        }
+        } else { toast("Erro ao gerar: " + d.msg); }
     }
+
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
 
     async function handleSaque() {
         const v = document.getElementById('v-saq').value;
         const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v})});
         const d = await res.json();
-        if(d.success) { state.s = d.novoSaldo; updateUI(); closeM(); toast("Saque solicitado!"); } else toast("Erro ou saldo insuficiente!");
+        if(d.success) { state.s = d.novoSaldo; updateUI(); closeM(); toast("Saque solicitado!"); } else toast(d.msg);
     }
 </script>
 </body>
