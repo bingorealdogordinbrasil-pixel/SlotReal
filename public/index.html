@@ -26,7 +26,7 @@
             width: max-content;
             transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); 
             will-change: transform;
-            padding-left: 140px;
+            padding-left: 140px; /* Alinhamento inicial */
         }
 
         .cell { 
@@ -120,7 +120,7 @@
     <div class="modal" id="win-m">
         <h2 id="win-t" style="margin:0"></h2>
         <h1 id="win-v" style="color:var(--gold); font-size:38px; margin:10px 0"></h1>
-        <p style="font-size: 10px; opacity: 0.6;">Aguardando nova rodada...</p>
+        <p style="font-size:10px; opacity:0.6">Aguardando nova rodada...</p>
     </div>
 
 <script>
@@ -133,29 +133,6 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
-    // SINCRONIZAÇÃO GLOBAL COM O SERVIDOR
-    async function sync() {
-        try {
-            const res = await fetch('/api/tempo-real');
-            const d = await res.json();
-            
-            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-            
-            // Se o servidor bater 0, inicia o giro para todos
-            if(d.segundos === 0 && !rodando) {
-                spin();
-            }
-
-            // Se o servidor resetar para 30, limpa a tela e fecha o prémio
-            if(d.segundos === 30) {
-                closeM();
-            }
-        } catch(e){}
-    }
-
-    // Consulta o servidor a cada 1 segundo
-    setInterval(sync, 1000);
-
     async function handleAuth(type) {
         const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
         const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
@@ -165,18 +142,19 @@
         const d = await res.json();
         if(d.success) {
             if(type==='login') {
-                state.u=d.user; state.s=d.saldo; state.b=d.bets || [0,0,0,0,0,0,0,0];
+                state.u=d.user; state.s=d.saldo; state.b=d.bets && d.bets.length === 8 ? d.bets : [0,0,0,0,0,0,0,0];
                 initGame();
-            } else { toast("Conta criada!"); toggleA(false); }
-        } else toast("Erro!");
+            } else { toast("Pronto!"); toggleA(false); }
+        } else toast(d.msg || "Erro!");
     }
 
     function initGame() {
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=0; i<1000; i++){
-            const c=document.createElement('div'); c.className='cell'; c.style.background=CORES[i%8]; c.innerText='R$ 5'; g.appendChild(c);
+        for(let i=0;i<1200;i++){
+            const c=document.createElement('div'); c.className='cell'; 
+            c.style.background=CORES[i%8]; c.innerText='R$ 5'; g.appendChild(c);
         }
         const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
@@ -185,7 +163,7 @@
             d.innerHTML = `<span>OPÇÃO ${i+1}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
                 if(state.s>=1 && !rodando){
-                    sClick.currentTime=0; sClick.play().catch(()=>{});
+                    if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
                     state.b[i]++; state.s--; updateUI();
                     fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
                 } else if(state.s < 1) toast("Saldo insuficiente!");
@@ -193,6 +171,25 @@
             area.appendChild(d);
         });
         updateUI(); 
+        setInterval(sync, 1000); // Começa a sincronizar com o servidor
+    }
+
+    async function sync() {
+        try {
+            const res = await fetch('/api/tempo-real');
+            const d = await res.json();
+            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+            
+            // Inicia o giro quando o servidor bate 0
+            if(d.segundos === 0 && !rodando) {
+                spin();
+            }
+            
+            // Fecha o prêmio quando o servidor reseta para 30
+            if(d.segundos === 30) {
+                closeM();
+            }
+        } catch(e){}
     }
 
     async function spin() {
@@ -200,18 +197,18 @@
         rodando = true;
         if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); }
         
-        const res = await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})});
-        const d = await res.json();
+        const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
+        
         const g = document.getElementById('grid');
-        const itemW = 90; 
+        const itemW = 90; // Largura exata da célula (80px + 10px margem)
         
         let cur = Math.round(pos / itemW) % 8;
         let diff = d.corAlvo - cur;
         if(diff <= 0) diff += 8;
-        pos += (120 + diff) * itemW; 
+        pos += (80 + diff) * itemW; // Giro longo
         
-        g.style.transform = `translate3d(-${pos}px, 0, 0)`;
-
+        g.style.transform = `translateX(-${pos}px)`;
+        
         setTimeout(() => {
             if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
             if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
@@ -220,12 +217,10 @@
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             
             openM('win-m');
-            
             state.s = d.novoSaldo; 
             state.b.fill(0); 
             updateUI(); 
             rodando = false;
-            // O modal fechará sozinho via sync() quando o servidor resetar
         }, 6500);
     }
 
@@ -240,13 +235,15 @@
 
     async function getPix() {
         const valor = document.getElementById('v-pix').value;
+        if(valor < 5) return toast("O valor mínimo de depósito é R$ 5");
+        
         const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:valor})});
         const d = await res.json();
         if(d.success) {
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
             document.getElementById('qr-area').style.display='block';
-        } else toast(d.msg);
+        } else toast(d.msg || "Erro!");
     }
 
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
@@ -254,9 +251,13 @@
     async function handleSaque() {
         const v = document.getElementById('v-saq').value;
         const pix = document.getElementById('c-pix').value;
+        if(!pix) return toast("Informe o PIX!");
         const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v,pix:pix})});
         const d = await res.json();
-        if(d.success) { state.s -= v; updateUI(); closeM(); toast("Pedido enviado!"); } else toast(d.msg);
+        if(d.success) { 
+            state.s = Number((state.s - v).toFixed(2)); 
+            updateUI(); closeM(); toast("Solicitado!"); 
+        } else toast(d.msg);
     }
 </script>
 </body>
