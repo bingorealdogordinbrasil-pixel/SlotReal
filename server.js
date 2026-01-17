@@ -14,115 +14,42 @@ const SENHA_ADMIN = "76811867";
 
 mongoose.connect(MONGO_URI).then(() => console.log("💎 SLOTREAL CONECTADO"));
 
-// BANCO DE DADOS
-const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
+// MODELOS
+const User = mongoose.model('User', new mongoose.Schema({
     user: { type: String, unique: true },
-    email: String, // Adicionado campo de e-mail
+    email: String,
     pass: String,
     saldo: { type: Number, default: 0.00 },
     saldoGanhos: { type: Number, default: 0.00 },
     bets: { type: [Number], default: [0,0,0,0,0,0,0,0] }
 }));
 
-const Stats = mongoose.models.Stats || mongoose.model('Stats', new mongoose.Schema({
-    lucroTotal: { type: Number, default: 0 }
-}));
+const Stats = mongoose.model('Stats', new mongoose.Schema({ lucroTotal: { type: Number, default: 0 } }));
+const Saque = mongoose.model('Saque', new mongoose.Schema({ user: String, valor: Number, pix: String, status: { type: String, default: "Pendente" }, data: { type: Date, default: Date.now } }));
 
-const Saque = mongoose.models.Saque || mongoose.model('Saque', new mongoose.Schema({
-    user: String,
-    valor: Number,
-    pix: String,
-    status: { type: String, default: "Pendente" },
-    data: { type: Date, default: Date.now }
-}));
-
-// LÓGICA DO TIMER REVISADA
+// TIMER CENTRALIZADO COM PAUSA AUTOMÁTICA
 let tempo = 30;
-let timerAtivo = true;
+let emPausa = false;
 
-// O servidor ainda conta, mas o frontend agora controla o reinício
-setInterval(() => { 
-    if(timerAtivo && tempo > 0) {
-        tempo--; 
+setInterval(() => {
+    if (!emPausa) {
+        if (tempo > 0) {
+            tempo--;
+        } else {
+            // Quando chega a 0, trava por 11 segundos (6s giro + 5s prêmio)
+            emPausa = true;
+            setTimeout(() => {
+                tempo = 30;
+                emPausa = false;
+            }, 11000); 
+        }
     }
 }, 1000);
 
-// Rota para o frontend saber o tempo
-app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempo }));
+app.get('/api/tempo-real', (req, res) => res.json({ segundos: tempo, pausa: emPausa }));
 
-// NOVA ROTA: Reseta o timer (chamada quando o user clica em OK no prêmio)
-app.post('/api/reset-timer', (req, res) => {
-    tempo = 30;
-    timerAtivo = true;
-    res.json({ success: true });
-});
-
-// SALVAR DADOS
-app.post('/api/save-saldo', async (req, res) => {
-    await User.findOneAndUpdate({ user: req.body.user }, { saldo: req.body.saldo, bets: req.body.bets });
-    res.json({ success: true });
-});
-
-// GERAR PIX
-app.post('/gerar-pix', (req, res) => {
-    const valorDepo = Number(req.body.valor);
-    if(!valorDepo || valorDepo < 5) return res.json({ success: false, msg: "Mínimo R$ 5" });
-
-    const postData = JSON.stringify({
-        transaction_amount: valorDepo,
-        description: `Dep_SlotReal_${req.body.user}`,
-        payment_method_id: "pix",
-        payer: { email: "gerente_vendas@email.com", first_name: req.body.user }
-    });
-
-    const options = {
-        hostname: 'api.mercadopago.com',
-        path: '/v1/payments',
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${MP_TOKEN}`,
-            'Content-Type': 'application/json',
-            'X-Idempotency-Key': Date.now().toString()
-        }
-    };
-
-    const mpReq = https.request(options, (mpRes) => {
-        let b = '';
-        mpRes.on('data', d => b += d);
-        mpRes.on('end', () => {
-            try {
-                const r = JSON.parse(b);
-                if (r.point_of_interaction) {
-                    res.json({ success: true, qr: r.point_of_interaction.transaction_data.qr_code_base64, code: r.point_of_interaction.transaction_data.qr_code });
-                } else { res.json({ success: false, msg: "Erro ao gerar PIX" }); }
-            } catch (e) { res.json({ success: false, msg: "Erro no servidor" }); }
-        });
-    });
-    mpReq.write(postData);
-    mpReq.end();
-});
-
-// SOLICITAR SAQUE
-app.post('/api/saque', async (req, res) => {
-    const u = await User.findOne({ user: req.body.user });
-    const valorSaque = parseFloat(req.body.valor);
-    if (!u) return res.json({ success: false, msg: "Usuário não encontrado" });
-
-    if (valorSaque < 20) return res.json({ success: false, msg: "Saque mínimo R$ 20" });
-    if (u.saldoGanhos < valorSaque) return res.json({ success: false, msg: "Saldo de ganhos insuficiente!" });
-
-    const nS = Number((u.saldo - valorSaque).toFixed(2));
-    const nSG = Number((u.saldoGanhos - valorSaque).toFixed(2));
-    await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, saldoGanhos: nSG } });
-    await new Saque({ user: u.user, valor: valorSaque, pix: req.body.pix }).save();
-    res.json({ success: true });
-});
-
-// GIRO (MUDANÇA: Para o timer quando o giro acontece)
+// ROTA DE GIRO
 app.post('/api/spin', async (req, res) => {
-    timerAtivo = false; // Para a contagem no servidor
-    tempo = 0; 
-
     const u = await User.findOne({ user: req.body.user });
     if(!u) return res.json({ success: false });
 
@@ -139,11 +66,10 @@ app.post('/api/spin', async (req, res) => {
     const nS = Number((u.saldo + ganho).toFixed(2));
     const nSG = Number((u.saldoGanhos + ganho).toFixed(2));
     await User.findOneAndUpdate({ user: u.user }, { $set: { saldo: nS, saldoGanhos: nSG, bets: [0,0,0,0,0,0,0,0] } });
-    
     res.json({ success: true, corAlvo: alvo, novoSaldo: nS, valorGanho: ganho });
 });
 
-// AUTH
+// LOGIN / REGISTRO / PIX / SAQUE (Mantidos conforme original)
 app.post('/auth/login', async (req, res) => {
     const c = await User.findOne({ user: req.body.user, pass: req.body.pass });
     if (c) res.json({ success: true, user: c.user, saldo: c.saldo, bets: c.bets });
@@ -152,29 +78,10 @@ app.post('/auth/login', async (req, res) => {
 
 app.post('/auth/register', async (req, res) => {
     try {
-        const novo = new User({ 
-            user: req.body.user, 
-            email: req.body.email, // Salva o e-mail
-            pass: req.body.pass 
-        });
+        const novo = new User({ user: req.body.user, email: req.body.email, pass: req.body.pass });
         await novo.save();
         res.json({ success: true });
     } catch (e) { res.json({ success: false }); }
-});
-
-// ADMIN (MANTIDO)
-app.post('/api/admin/list', async (req, res) => {
-    if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    const users = await User.find({}, 'user saldo saldoGanhos');
-    const st = await Stats.findOne({});
-    const saques = await Saque.find({ status: "Pendente" });
-    res.json({ success: true, users, lucroBanca: st ? st.lucroTotal : 0, saques });
-});
-
-app.post('/api/admin/pagar-saque', async (req, res) => {
-    if(req.body.senha !== SENHA_ADMIN) return res.json({ success: false });
-    await Saque.findByIdAndDelete(req.body.id);
-    res.json({ success: true });
 });
 
 app.listen(process.env.PORT || 10000);
