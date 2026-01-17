@@ -61,7 +61,10 @@
         </div>
         <p style="font-size:10px; color:gray; margin-top:10px">ID: <span id="display-id"></span></p>
         <h1 id="timer" style="color:var(--gold); font-size:48px; margin:10px 0">00:30</h1>
-        <div class="roleta-container"><div class="seletor"></div><div id="grid"></div></div>
+        <div class="roleta-container">
+            <div class="seletor"></div>
+            <div id="grid"></div>
+        </div>
         <div class="bet-grid" id="bet-grid"></div>
     </div>
 
@@ -109,14 +112,30 @@
         closeM();
     }
 
+    // GERA OS QUADRADOS NA ROLETA ASSIM QUE LOGA
+    function preencherRoleta() {
+        const g = document.getElementById('grid');
+        g.innerHTML = '';
+        for(let i=0; i<1000; i++){
+            const c=document.createElement('div');
+            c.className='cell';
+            c.style.background = CORES[i % 8];
+            c.innerText = 'R$ 5'; // MOSTRA O VALOR NOS QUADRADOS
+            g.appendChild(c);
+        }
+    }
+
     async function sync() {
-        if (rodando) return; // Não atualiza o timer se estiver girando ou no prêmio
+        if (rodando) return;
         try {
             const res = await fetch('/api/tempo-real');
             const d = await res.json();
             document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
             if(d.segundos === 0) spin();
-            if(d.segundos === 30) closeM();
+            if(d.segundos === 30) {
+                // Ao resetar o tempo, garante que os modais sumam, menos o de vitória se estiver ativo
+                if(document.getElementById('win-m').style.display !== 'block') closeM();
+            }
         } catch(e){}
     }
     setInterval(sync, 1000);
@@ -141,10 +160,8 @@
     function initGame() {
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
-        const g = document.getElementById('grid'); g.innerHTML = '';
-        for(let i=0; i<1000; i++){
-            const c=document.createElement('div'); c.className='cell'; c.style.background=CORES[i%8]; c.innerText='5x'; g.appendChild(c);
-        }
+        preencherRoleta(); // CHAMA A FUNÇÃO PARA NÃO FICAR PRETO
+        
         const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
             const d = document.createElement('div'); d.className='bet-card'; d.id=`card-${i}`;
@@ -163,7 +180,7 @@
 
     async function spin() {
         if(rodando) return; 
-        rodando = true; // Bloqueia tudo
+        rodando = true;
         sSpin.loop = true; sSpin.play().catch(()=>{});
         const res = await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})});
         const d = await res.json();
@@ -180,10 +197,9 @@
             openM('win-m');
             state.s = d.novoSaldo; state.b.fill(0); updateUI();
             
-            // AGUARDA 3 SEGUNDOS E SÓ DEPOIS LIBERA A ROLETA
             setTimeout(() => { 
                 closeM(); 
-                rodando = false; // LIBEROU
+                rodando = false; 
             }, 3000);
         }, 6500);
     }
