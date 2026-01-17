@@ -15,6 +15,7 @@
         .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
         .btn-white { background: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
 
+        /* AJUSTE NA ROLETA PARA NÃO SUMIR */
         .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 95px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
         
         #grid { 
@@ -23,7 +24,7 @@
             position: absolute; 
             left: 0; 
             height: 100%; 
-            width: max-content; /* Impede que os itens sumam */
+            width: max-content; /* Fundamental para manter os itens em linha */
             transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); 
             will-change: transform;
         }
@@ -39,9 +40,8 @@
             justify-content: center; 
             font-weight: 800; 
             color: #000; 
-            flex-shrink: 0; /* IMPEDE QUE O QUADRADINHO FIQUE PRETO/ESPREMIDO */
+            flex-shrink: 0; /* Impede que o item seja espremido */
             font-size: 14px; 
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
         }
 
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
@@ -76,9 +76,9 @@
                 <p onclick="toggleA(true)" style="font-size:12px; cursor:pointer; margin-top:20px">Cadastrar-se</p>
             </div>
             <div id="reg-box" style="display:none">
-                <input type="text" id="ru" placeholder="Usuário">
+                <input type="text" id="ru" placeholder="Novo Usuário">
                 <input type="email" id="re" placeholder="E-mail">
-                <input type="password" id="rp" placeholder="Senha">
+                <input type="password" id="rp" placeholder="Nova Senha">
                 <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('reg')">CRIAR CONTA</button>
                 <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Fazer Login</p>
             </div>
@@ -139,7 +139,7 @@
         const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
         let payload = { user: u, pass: p };
         
-        if(type === 'reg') {
+        if (type === 'reg') {
             const e = document.getElementById('re').value;
             if(!e.includes('@')) return toast("E-mail inválido!");
             payload.email = e;
@@ -160,13 +160,16 @@
     function initGame() {
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
-        const g = document.getElementById('grid'); g.innerHTML = '';
         
+        const g = document.getElementById('grid'); 
+        g.innerHTML = '';
+        
+        // Preenche a roleta com itens coloridos (400 itens para garantir o giro)
         for(let i=0; i<400; i++){
-            const c=document.createElement('div'); 
-            c.className='cell'; 
-            c.style.background=CORES[i%8]; 
-            c.innerText='R$ 5'; 
+            const c = document.createElement('div'); 
+            c.className = 'cell'; 
+            c.style.background = CORES[i % 8]; 
+            c.innerText = 'R$ 5'; 
             g.appendChild(c);
         }
 
@@ -184,7 +187,8 @@
             };
             area.appendChild(d);
         });
-        updateUI(); setInterval(sync, 1000);
+        updateUI(); 
+        setInterval(sync, 1000);
     }
 
     async function sync() {
@@ -192,6 +196,7 @@
             const res = await fetch('/api/tempo-real');
             const d = await res.json();
             document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+            // Inicia o giro exatamente quando o tempo atinge 30s ou o gatilho do servidor
             if(d.segundos === 30 && !rodando) spin();
         } catch(e){}
     }
@@ -205,22 +210,25 @@
         const d = await res.json();
         
         const g = document.getElementById('grid');
-        const itemW = 90; // 80px + 10px margem
+        const itemW = 90; // largura da cell (80) + margem (10)
         
         let cur = Math.round(pos / itemW) % 8;
         let diff = d.corAlvo - cur;
         if(diff <= 0) diff += 8;
         
-        pos += (80 + diff) * itemW; // Dá pelo menos 10 voltas
+        pos += (80 + diff) * itemW; // Multiplicador para dar várias voltas
         g.style.transform = `translate3d(-${pos - 135}px, 0, 0)`;
 
         setTimeout(() => {
             if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
             if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
-            document.getElementById('win-t').innerText = d.valorGanho>0?"GANHOU!":"PERDEU";
+            document.getElementById('win-t').innerText = d.valorGanho > 0 ? "GANHOU!" : "PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             openM('win-m');
-            state.s=d.novoSaldo; state.b.fill(0); updateUI(); rodando=false;
+            state.s = d.novoSaldo; 
+            state.b.fill(0); 
+            updateUI(); 
+            rodando = false;
         }, 6500);
     }
 
@@ -241,7 +249,7 @@
         if(d.success) {
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
-            document.getElementById('qr-area').style.display='block';
+            document.getElementById('qr-area').style.display = 'block';
         } else toast(d.msg);
     }
 
