@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SlotReal Gold</title>
+    <title>SlotReal Gold - Oficial</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --gold: #d4af37; --bg: #0b0b0b; --card: #161616; --green: #2ecc71; }
         body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
         .top-bar { background: rgba(17,17,17,0.98); padding: 12px 15px; display: flex; justify-content: space-between; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; align-items: center; }
-        .balance-box { background: #000; border: 1px solid var(--gold); padding: 6px 12px; border-radius: 50px; color: var(--green); font-weight: bold; }
-        .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; font-size: 11px; }
-        .btn-white { background: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; font-size: 11px; }
-        .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 95px; }
+        .balance-box { background: #000; border: 1px solid var(--gold); padding: 6px 12px; border-radius: 50px; color: var(--green); font-weight: bold; font-size: 14px; }
+        .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
+        .btn-white { background: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
+        .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 95px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
         #grid { display: flex; align-items: center; position: absolute; left: 0; height: 100%; width: max-content; transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); padding-left: 140px; }
-        .cell { min-width: 80px; height: 70px; margin: 0 5px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; }
+        .cell { min-width: 80px; height: 70px; margin: 0 5px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; font-size: 14px; }
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
         .bet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 15px; }
-        .bet-card { background: var(--card); border-radius: 10px; padding: 8px 4px; border: 1px solid #333; cursor: pointer; border-bottom: 4px solid transparent; }
-        .bet-card b { display: block; color: var(--gold); font-size: 11px; }
+        .bet-card { background: var(--card); border-radius: 10px; padding: 8px 4px; border: 1px solid #333; cursor: pointer; border-bottom: 4px solid transparent; transition: 0.2s; }
+        .bet-card b { display: block; color: var(--gold); font-size: 11px; margin-top: 4px; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card); padding: 25px; border-radius: 20px; width: 280px; z-index: 200; border: 2px solid var(--gold); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 150; }
-        input { width: 90%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; text-align: center; }
+        input { width: 90%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; text-align: center; font-size: 16px; }
         #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 8px 20px; border-radius: 50px; font-weight: bold; display: none; z-index: 1000; }
     </style>
 </head>
@@ -34,19 +34,19 @@
 
     <div id="auth-screen" style="margin-top: 60px;">
         <div style="background: var(--card); padding: 30px; border-radius: 25px; border: 1px solid var(--gold); display: inline-block; width: 280px;">
-            <h2 style="color:var(--gold); margin:0 0 20px 0">SLOTREAL</h2>
+            <h2 style="color:var(--gold); margin:0 0 10px 0">SLOTREAL</h2>
             <div id="login-box">
                 <input type="text" id="u" placeholder="Usuário">
                 <input type="password" id="p" placeholder="Senha">
                 <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('login')">ENTRAR</button>
-                <p onclick="toggleA(true)" style="font-size:12px; cursor:pointer; margin-top:20px">Não tem conta? Cadastrar-se</p>
+                <p onclick="toggleA(true)" style="font-size:12px; cursor:pointer; margin-top:20px">Cadastrar nova conta</p>
             </div>
             <div id="reg-box" style="display:none">
-                <input type="text" id="ru" placeholder="Novo Usuário">
-                <input type="email" id="re" placeholder="E-mail">
-                <input type="password" id="rp" placeholder="Nova Senha">
+                <input type="text" id="ru" placeholder="Usuário">
+                <input type="email" id="re" placeholder="Seu E-mail">
+                <input type="password" id="rp" placeholder="Senha">
                 <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('reg')">CRIAR CONTA</button>
-                <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Já tem conta? Login</p>
+                <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Já tenho conta</p>
             </div>
         </div>
     </div>
@@ -59,7 +59,7 @@
                 <button class="btn-white" onclick="openM('saque-m')">SAQUE</button>
             </div>
         </div>
-        <p style="font-size:12px; margin-top:10px; color:gray">ID: <span id="user-id-display"></span></p>
+        <p style="font-size:10px; color:gray; margin-top:10px">ID: <span id="display-id"></span></p>
         <h1 id="timer" style="color:var(--gold); font-size:48px; margin:10px 0">00:30</h1>
         <div class="roleta-container"><div class="seletor"></div><div id="grid"></div></div>
         <div class="bet-grid" id="bet-grid"></div>
@@ -67,18 +67,16 @@
 
     <div class="modal" id="pix-m">
         <h3 style="color:var(--gold); margin:0">DEPOSITAR</h3>
-        <p style="font-size:11px">Mínimo R$ 5,00</p>
         <input type="number" id="v-pix" value="5">
         <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
         <div id="qr-area" style="display:none; margin-top:15px">
             <img id="qr-img" style="width:140px; background:#fff; padding:5px; border-radius:10px">
-            <button class="btn-gold" style="width:100%; margin-top:10px" onclick="copy()">COPIAR CÓDIGO</button>
+            <button class="btn-gold" style="width:100%; margin-top:10px" onclick="copy()">COPIAR PIX</button>
         </div>
     </div>
 
     <div class="modal" id="saque-m">
-        <h3 style="color:var(--gold); margin:0">SAQUE</h3>
-        <p style="font-size:11px">Mínimo R$ 20,00</p>
+        <h3 style="color:var(--gold); margin:0">SAQUE (Mín. 20)</h3>
         <input type="number" id="v-saq" placeholder="Valor">
         <input type="text" id="c-pix" placeholder="Chave PIX">
         <button class="btn-gold" style="width:100%" onclick="handleSaque()">SOLICITAR</button>
@@ -87,11 +85,11 @@
     <div class="modal" id="win-m">
         <h2 id="win-t" style="margin:0"></h2>
         <h1 id="win-v" style="color:var(--gold); font-size:38px; margin:10px 0"></h1>
-        <p style="font-size:10px; opacity:0.6">Reiniciando automaticamente...</p>
+        <p style="font-size:10px; opacity:0.6">Fechando em 3 segundos...</p>
     </div>
 
 <script>
-    let state = { id: '', u:'', s:0, b:[0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
+    let state = { id:'', u:'', s:0, b:[0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
     const CORES = ['#FFF','#FFD700','#00FF7F','#FF00FF','#FF4500','#1E90FF','#808080','#00FFFF'];
     const sClick = document.getElementById('s-click'), sSpin = document.getElementById('s-spin'), sWin = document.getElementById('s-win'), sLoss = document.getElementById('s-loss');
 
@@ -100,6 +98,7 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
+    // Sincroniza com o servidor
     async function sync() {
         try {
             const res = await fetch('/api/tempo-real');
@@ -115,8 +114,6 @@
         const u = document.getElementById(type==='login'?'u':'ru').value;
         const p = document.getElementById(type==='login'?'p':'rp').value;
         const e = type==='reg' ? document.getElementById('re').value : '';
-        if(type==='reg' && !e.includes('@')) return toast("E-mail inválido");
-
         const res = await fetch(type==='login' ? '/auth/login' : '/auth/register', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p, email:e})
         });
@@ -124,9 +121,9 @@
         if(d.success) {
             if(type==='login') {
                 state.id=d.id; state.u=d.user; state.s=d.saldo;
-                document.getElementById('user-id-display').innerText = d.id;
+                document.getElementById('display-id').innerText = d.id;
                 initGame();
-            } else { toast("Registrado! Faça login."); toggleA(false); }
+            } else { toast("Conta criada!"); toggleA(false); }
         } else toast(d.msg || "Erro!");
     }
 
@@ -135,7 +132,7 @@
         document.getElementById('game-screen').style.display='block';
         const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=0; i<1000; i++){
-            const c=document.createElement('div'); c.className='cell'; c.style.background=CORES[i%8]; c.innerText='R$ 5'; g.appendChild(c);
+            const c=document.createElement('div'); c.className='cell'; c.style.background=CORES[i%8]; c.innerText='5x'; g.appendChild(c);
         }
         const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
@@ -162,6 +159,7 @@
         let diff = d.corAlvo - cur; if(diff <= 0) diff += 8;
         pos += (120 + diff) * itemW; 
         document.getElementById('grid').style.transform = `translate3d(-${pos}px, 0, 0)`;
+        
         setTimeout(() => {
             sSpin.pause(); sSpin.currentTime = 0;
             if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
@@ -169,6 +167,9 @@
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             openM('win-m');
             state.s = d.novoSaldo; state.b.fill(0); updateUI(); rodando = false;
+
+            // SAI DA TELA SOZINHO EM 3 SEGUNDOS
+            setTimeout(() => { closeM(); }, 3000);
         }, 6500);
     }
 
@@ -183,7 +184,6 @@
 
     async function getPix() {
         const v = document.getElementById('v-pix').value;
-        if(v < 5) return toast("Mínimo R$ 5");
         const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u, id:state.id, valor:v})});
         const d = await res.json();
         if(d.success) {
@@ -192,7 +192,6 @@
             document.getElementById('qr-area').style.display='block';
         } else toast(d.msg);
     }
-
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
 
     async function handleSaque() {
