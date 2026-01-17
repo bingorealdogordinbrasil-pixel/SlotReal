@@ -64,7 +64,7 @@
     <audio id="s-loss" src="loss.mp3"></audio>
 
     <div id="toast"></div>
-    <div class="overlay" id="ov" onclick="closeM()"></div>
+    <div class="overlay" id="ov"></div>
 
     <div id="auth-screen" style="margin-top: 80px;">
         <div style="background: var(--card); padding: 30px; border-radius: 25px; border: 1px solid var(--gold); display: inline-block; width: 260px;">
@@ -121,7 +121,7 @@
     <div class="modal" id="win-m">
         <h2 id="win-t" style="margin:0"></h2>
         <h1 id="win-v" style="color:var(--gold); font-size:38px; margin:10px 0"></h1>
-        <button class="btn-gold" style="width:100%" onclick="recomecarTimer()">OK</button>
+        <p style="font-size:10px; opacity:0.6">Reiniciando em 4s...</p>
     </div>
 
 <script>
@@ -137,10 +137,10 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
-    // RESETAR NO SERVIDOR E NO CLIENTE
-    async function recomecarTimer() {
+    // FUNÇÃO PARA RECOMEÇAR TUDO AUTOMATICAMENTE
+    async function resetAutomatico() {
         closeM();
-        await fetch('/api/reset-timer', { method: 'POST' }); // Chama a nova rota do backend
+        await fetch('/api/reset-timer', { method: 'POST' }); // Reseta no servidor
         tempoRestante = 30;
         document.getElementById('timer').innerText = `00:30`;
         iniciarContagem();
@@ -229,12 +229,18 @@
             document.getElementById('win-t').innerText = d.valorGanho > 0 ? "GANHOU!" : "PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             
-            openM('win-m'); // Abre o modal do resultado
+            openM('win-m');
             
             state.s = d.novoSaldo; 
             state.b.fill(0); 
             updateUI(); 
             rodando = false;
+
+            // ESPERA 4 SEGUNDOS E RECOMENTA AUTOMATICAMENTE
+            setTimeout(() => {
+                resetAutomatico();
+            }, 4000);
+
         }, 6500);
     }
 
