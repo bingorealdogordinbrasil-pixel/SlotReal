@@ -15,7 +15,6 @@
         .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
         .btn-white { background: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
 
-        /* AJUSTE NA ROLETA: Agora os itens ficam em linha */
         .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 90px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
         
         #grid { 
@@ -24,7 +23,7 @@
             position: absolute; 
             left: 0; 
             height: 100%; 
-            width: max-content; /* ISSO IMPEDE QUE ELES SUMAM */
+            width: max-content;
             transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); 
             will-change: transform;
         }
@@ -76,6 +75,7 @@
             </div>
             <div id="reg-box" style="display:none">
                 <input type="text" id="ru" placeholder="Novo Usuário">
+                <input type="email" id="re" placeholder="Seu E-mail">
                 <input type="password" id="rp" placeholder="Nova Senha">
                 <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('reg')">CRIAR CONTA</button>
                 <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Fazer Login</p>
@@ -132,29 +132,42 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
+    // FUNÇÃO DE AUTENTICAÇÃO ATUALIZADA
     async function handleAuth(type) {
         const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
         const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
+        
+        let payload = { user: u, pass: p };
+
+        if (type === 'reg') {
+            const e = document.getElementById('re').value;
+            if (!e.includes('@')) return toast("E-mail inválido!");
+            payload.email = e; // Adiciona o e-mail apenas no registro
+        }
+
         const res = await fetch(type==='login' ? '/auth/login' : '/auth/register', {
-            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p})
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify(payload)
         });
+
         const d = await res.json();
         if(d.success) {
             if(type==='login') {
                 state.u=d.user; state.s=d.saldo; state.b=d.bets && d.bets.length === 8 ? d.bets : [0,0,0,0,0,0,0,0];
                 initGame();
-            } else { toast("Pronto!"); toggleA(false); }
+            } else { 
+                toast("Conta criada!"); 
+                toggleA(false); 
+            }
         } else toast(d.msg || "Erro!");
     }
 
     function initGame() {
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
-        
         const g = document.getElementById('grid'); 
         g.innerHTML = '';
-        
-        // Criando os quadradinhos R$ 5 corretamente
         for(let i=0; i<300; i++){
             const c=document.createElement('div'); 
             c.className='cell'; 
@@ -162,7 +175,6 @@
             c.innerText='R$ 5'; 
             g.appendChild(c);
         }
-
         const area = document.getElementById('bet-grid'); 
         area.innerHTML = '';
         CORES.forEach((c,i) => {
@@ -183,9 +195,12 @@
     }
 
     async function sync() {
-        const d = await (await fetch('/api/tempo-real')).json();
-        document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-        if(d.segundos === 30 && !rodando) spin();
+        try {
+            const res = await fetch('/api/tempo-real');
+            const d = await res.json();
+            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+            if(d.segundos === 30 && !rodando) spin();
+        } catch(e) {}
     }
 
     async function spin() {
@@ -194,7 +209,6 @@
         const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
         const g = document.getElementById('grid');
         
-        // Ajuste no cálculo para parar no item certo (cada item tem 80px + 10px de margem)
         let larguraItem = 90; 
         let cur = Math.round(pos / larguraItem) % 8;
         let diff = d.corAlvo - cur;
