@@ -67,11 +67,16 @@
 
     <div class="modal" id="pix-m">
         <h3 style="color:var(--gold); margin:0">DEPOSITAR</h3>
-        <input type="number" id="v-pix" value="5">
-        <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
+        <div id="area-gerar">
+            <input type="number" id="v-pix" value="5">
+            <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
+            <button class="btn-white" style="width:100%; margin-top:10px; background:#444; color:#fff;" onclick="closeM()">CANCELAR</button>
+        </div>
+        
         <div id="qr-area" style="display:none; margin-top:15px">
             <img id="qr-img" style="width:140px; background:#fff; padding:5px; border-radius:10px">
             <button class="btn-gold" style="width:100%; margin-top:10px" onclick="copy()">COPIAR PIX</button>
+            <button class="btn-white" style="width:100%; margin-top:10px" onclick="fecharPix()">FECHAR</button>
         </div>
     </div>
 
@@ -80,6 +85,7 @@
         <input type="number" id="v-saq" placeholder="Valor">
         <input type="text" id="c-pix" placeholder="Chave PIX">
         <button class="btn-gold" style="width:100%" onclick="handleSaque()">SOLICITAR</button>
+        <button class="btn-white" style="width:100%; margin-top:10px; background:#444; color:#fff;" onclick="closeM()">VOLTAR</button>
     </div>
 
     <div class="modal" id="win-m">
@@ -98,7 +104,12 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
-    // Sincroniza com o servidor
+    function fecharPix() {
+        document.getElementById('qr-area').style.display = 'none';
+        document.getElementById('area-gerar').style.display = 'block';
+        closeM();
+    }
+
     async function sync() {
         try {
             const res = await fetch('/api/tempo-real');
@@ -167,8 +178,6 @@
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             openM('win-m');
             state.s = d.novoSaldo; state.b.fill(0); updateUI(); rodando = false;
-
-            // SAI DA TELA SOZINHO EM 3 SEGUNDOS
             setTimeout(() => { closeM(); }, 3000);
         }, 6500);
     }
@@ -184,11 +193,13 @@
 
     async function getPix() {
         const v = document.getElementById('v-pix').value;
+        if(v < 5) return toast("Mínimo R$ 5");
         const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u, id:state.id, valor:v})});
         const d = await res.json();
         if(d.success) {
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
+            document.getElementById('area-gerar').style.display='none';
             document.getElementById('qr-area').style.display='block';
         } else toast(d.msg);
     }
