@@ -26,7 +26,7 @@
             width: max-content;
             transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); 
             will-change: transform;
-            padding-left: 140px; /* Compensação para o primeiro item não sumir */
+            padding-left: 140px;
         }
 
         .cell { 
@@ -121,11 +121,14 @@
     <div class="modal" id="win-m">
         <h2 id="win-t" style="margin:0"></h2>
         <h1 id="win-v" style="color:var(--gold); font-size:38px; margin:10px 0"></h1>
-        <button class="btn-gold" style="width:100%" onclick="closeM()">OK</button>
+        <button class="btn-gold" style="width:100%" onclick="recomecarTimer()">OK</button>
     </div>
 
 <script>
     let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
+    let tempoRestante = 30;
+    let timerInterval;
+
     const CORES = ['#FFF','#FFD700','#00FF7F','#FF00FF','#FF4500','#1E90FF','#808080','#00FFFF'];
     const sClick = document.getElementById('s-click'), sSpin = document.getElementById('s-spin'), sWin = document.getElementById('s-win'), sLoss = document.getElementById('s-loss');
 
@@ -133,6 +136,13 @@
     function toggleA(r){ document.getElementById('login-box').style.display=r?'none':'block'; document.getElementById('reg-box').style.display=r?'block':'none'; }
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
+
+    // FUNÇÃO PARA RECOMECAR O TIMER MANUALMENTE APÓS O MODAL
+    function recomecarTimer() {
+        closeM();
+        tempoRestante = 30;
+        iniciarContagem();
+    }
 
     async function handleAuth(type) {
         const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
@@ -176,38 +186,56 @@
             };
             area.appendChild(d);
         });
-        updateUI(); setInterval(sync, 1000);
+        updateUI(); 
+        iniciarContagem();
     }
 
-    async function sync() {
-        try {
-            const res = await fetch('/api/tempo-real');
-            const d = await res.json();
-            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-            if(d.segundos === 30 && !rodando) spin();
-        } catch(e){}
+    function iniciarContagem() {
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if(rodando) return; // Se estiver girando, o timer não mexe aqui localmente
+            tempoRestante--;
+            document.getElementById('timer').innerText = `00:${tempoRestante.toString().padStart(2,'0')}`;
+            if(tempoRestante <= 0) {
+                clearInterval(timerInterval);
+                spin();
+            }
+        }, 1000);
     }
 
     async function spin() {
         if(rodando) return;
         rodando = true;
         if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); }
+        
         const res = await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})});
         const d = await res.json();
         const g = document.getElementById('grid');
         const itemW = 90; 
+        
         let cur = Math.round(pos / itemW) % 8;
         let diff = d.corAlvo - cur;
         if(diff <= 0) diff += 8;
         pos += (120 + diff) * itemW; 
+        
         g.style.transform = `translate3d(-${pos}px, 0, 0)`;
+
         setTimeout(() => {
             if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
             if(d.valorGanho > 0) sWin.play().catch(()=>{}); else sLoss.play().catch(()=>{});
-            document.getElementById('win-t').innerText = d.valorGanho>0?"GANHOU!":"PERDEU";
+            
+            document.getElementById('win-t').innerText = d.valorGanho > 0 ? "GANHOU!" : "PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
+            
+            // MOSTRA O PRÉMIO
             openM('win-m');
-            state.s=d.novoSaldo; state.b.fill(0); updateUI(); rodando=false;
+            
+            state.s = d.novoSaldo; 
+            state.b.fill(0); 
+            updateUI(); 
+            rodando = false;
+            
+            // O TIMER SÓ VOLTA A CONTAR QUANDO O UTILIZADOR CLICAR EM "OK" NO MODAL (recomecarTimer)
         }, 6500);
     }
 
