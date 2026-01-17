@@ -77,7 +77,6 @@
             </div>
             <div id="reg-box" style="display:none">
                 <input type="text" id="ru" placeholder="Novo Usuário">
-                <input type="email" id="re" placeholder="E-mail">
                 <input type="password" id="rp" placeholder="Nova Senha">
                 <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('reg')">CRIAR CONTA</button>
                 <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Fazer Login</p>
@@ -121,14 +120,11 @@
     <div class="modal" id="win-m">
         <h2 id="win-t" style="margin:0"></h2>
         <h1 id="win-v" style="color:var(--gold); font-size:38px; margin:10px 0"></h1>
-        <p style="font-size:10px; opacity:0.6">Reiniciando em 4s...</p>
+        <p style="font-size: 10px; opacity: 0.6;">Aguardando nova rodada...</p>
     </div>
 
 <script>
     let state = { u:'', s:0, b:[0,0,0,0,0,0,0,0] }, pos = 0, rodando = false;
-    let tempoRestante = 30;
-    let timerInterval;
-
     const CORES = ['#FFF','#FFD700','#00FF7F','#FF00FF','#FF4500','#1E90FF','#808080','#00FFFF'];
     const sClick = document.getElementById('s-click'), sSpin = document.getElementById('s-spin'), sWin = document.getElementById('s-win'), sLoss = document.getElementById('s-loss');
 
@@ -137,26 +133,34 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
-    // FUNÇÃO PARA RECOMEÇAR TUDO AUTOMATICAMENTE
-    async function resetAutomatico() {
-        closeM();
-        await fetch('/api/reset-timer', { method: 'POST' }); // Reseta no servidor
-        tempoRestante = 30;
-        document.getElementById('timer').innerText = `00:30`;
-        iniciarContagem();
+    // SINCRONIZAÇÃO GLOBAL COM O SERVIDOR
+    async function sync() {
+        try {
+            const res = await fetch('/api/tempo-real');
+            const d = await res.json();
+            
+            document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
+            
+            // Se o servidor bater 0, inicia o giro para todos
+            if(d.segundos === 0 && !rodando) {
+                spin();
+            }
+
+            // Se o servidor resetar para 30, limpa a tela e fecha o prémio
+            if(d.segundos === 30) {
+                closeM();
+            }
+        } catch(e){}
     }
+
+    // Consulta o servidor a cada 1 segundo
+    setInterval(sync, 1000);
 
     async function handleAuth(type) {
         const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
         const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
-        let payload = { user: u, pass: p };
-        if(type === 'reg') {
-            const e = document.getElementById('re').value;
-            if(!e.includes('@')) return toast("E-mail inválido!");
-            payload.email = e;
-        }
         const res = await fetch(type==='login' ? '/auth/login' : '/auth/register', {
-            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:u, pass:p})
         });
         const d = await res.json();
         if(d.success) {
@@ -164,7 +168,7 @@
                 state.u=d.user; state.s=d.saldo; state.b=d.bets || [0,0,0,0,0,0,0,0];
                 initGame();
             } else { toast("Conta criada!"); toggleA(false); }
-        } else toast(d.msg || "Erro!");
+        } else toast("Erro!");
     }
 
     function initGame() {
@@ -181,7 +185,7 @@
             d.innerHTML = `<span>OPÇÃO ${i+1}</span><b id="vb-${i}">R$ ${state.b[i]}</b>`;
             d.onclick = () => {
                 if(state.s>=1 && !rodando){
-                    if(sClick) { sClick.currentTime=0; sClick.play().catch(()=>{}); }
+                    sClick.currentTime=0; sClick.play().catch(()=>{});
                     state.b[i]++; state.s--; updateUI();
                     fetch('/api/save-saldo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,saldo:state.s,bets:state.b})});
                 } else if(state.s < 1) toast("Saldo insuficiente!");
@@ -189,20 +193,6 @@
             area.appendChild(d);
         });
         updateUI(); 
-        iniciarContagem();
-    }
-
-    function iniciarContagem() {
-        if(timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            if(rodando) return;
-            tempoRestante--;
-            document.getElementById('timer').innerText = `00:${tempoRestante.toString().padStart(2,'0')}`;
-            if(tempoRestante <= 0) {
-                clearInterval(timerInterval);
-                spin();
-            }
-        }, 1000);
     }
 
     async function spin() {
@@ -235,12 +225,7 @@
             state.b.fill(0); 
             updateUI(); 
             rodando = false;
-
-            // ESPERA 4 SEGUNDOS E RECOMENTA AUTOMATICAMENTE
-            setTimeout(() => {
-                resetAutomatico();
-            }, 4000);
-
+            // O modal fechará sozinho via sync() quando o servidor resetar
         }, 6500);
     }
 
@@ -255,7 +240,6 @@
 
     async function getPix() {
         const valor = document.getElementById('v-pix').value;
-        if(valor < 5) return toast("Mínimo R$ 5");
         const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:valor})});
         const d = await res.json();
         if(d.success) {
@@ -270,13 +254,9 @@
     async function handleSaque() {
         const v = document.getElementById('v-saq').value;
         const pix = document.getElementById('c-pix').value;
-        if(!pix) return toast("PIX vazio!");
         const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v,pix:pix})});
         const d = await res.json();
-        if(d.success) { 
-            state.s = Number((state.s - v).toFixed(2)); 
-            updateUI(); closeM(); toast("Pedido enviado!"); 
-        } else toast(d.msg);
+        if(d.success) { state.s -= v; updateUI(); closeM(); toast("Pedido enviado!"); } else toast(d.msg);
     }
 </script>
 </body>
