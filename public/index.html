@@ -72,7 +72,6 @@
             <button class="btn-gold" style="width:100%" onclick="getPix()">GERAR PIX</button>
             <button class="btn-white" style="width:100%; margin-top:10px; background:#444; color:#fff;" onclick="closeM()">CANCELAR</button>
         </div>
-        
         <div id="qr-area" style="display:none; margin-top:15px">
             <img id="qr-img" style="width:140px; background:#fff; padding:5px; border-radius:10px">
             <button class="btn-gold" style="width:100%; margin-top:10px" onclick="copy()">COPIAR PIX</button>
@@ -111,11 +110,12 @@
     }
 
     async function sync() {
+        if (rodando) return; // Não atualiza o timer se estiver girando ou no prêmio
         try {
             const res = await fetch('/api/tempo-real');
             const d = await res.json();
             document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
-            if(d.segundos === 0 && !rodando) spin();
+            if(d.segundos === 0) spin();
             if(d.segundos === 30) closeM();
         } catch(e){}
     }
@@ -162,7 +162,8 @@
     }
 
     async function spin() {
-        if(rodando) return; rodando = true;
+        if(rodando) return; 
+        rodando = true; // Bloqueia tudo
         sSpin.loop = true; sSpin.play().catch(()=>{});
         const res = await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})});
         const d = await res.json();
@@ -177,8 +178,13 @@
             document.getElementById('win-t').innerText = d.valorGanho > 0 ? "GANHOU!" : "PERDEU";
             document.getElementById('win-v').innerText = `R$ ${d.valorGanho.toFixed(2)}`;
             openM('win-m');
-            state.s = d.novoSaldo; state.b.fill(0); updateUI(); rodando = false;
-            setTimeout(() => { closeM(); }, 3000);
+            state.s = d.novoSaldo; state.b.fill(0); updateUI();
+            
+            // AGUARDA 3 SEGUNDOS E SÓ DEPOIS LIBERA A ROLETA
+            setTimeout(() => { 
+                closeM(); 
+                rodando = false; // LIBEROU
+            }, 3000);
         }, 6500);
     }
 
