@@ -1,102 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerência SlotReal</title>
+    <title>Gerência SlotReal - Oficial</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
-        .card { background: #111; border: 1px solid #d4af37; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .saque-card { background: #111; border: 1px solid #2ecc71; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        button { background: #d4af37; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor:pointer; }
+        body { background: #000; color: #fff; font-family: 'Poppins', sans-serif; text-align: center; margin: 0; padding: 20px; }
+        h1 { color: #d4af37; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .stat-box { background: #111; border: 1px solid #d4af37; padding: 15px; border-radius: 12px; }
+        .stat-box span { display: block; font-size: 22px; font-weight: bold; color: #2ecc71; }
+
+        .card { background: #111; border: 1px solid #333; margin: 10px 0; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .card:hover { border-color: #d4af37; }
+        
+        .saque-card { background: #0a110d; border: 1px solid #2ecc71; margin: 10px 0; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        button { background: #d4af37; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; color: #000; text-transform: uppercase; font-size: 12px; }
+        button:active { transform: scale(0.95); }
+        
         .btn-pago { background: #2ecc71; color: #000; }
-        input { padding: 10px; border-radius: 5px; margin: 5px; }
+        .btn-recusar { background: #e74c3c; color: #fff; margin-left: 5px; }
+        
+        input { padding: 10px; border-radius: 5px; margin: 5px; background: #222; border: 1px solid #444; color: #fff; outline: none; }
+        input:focus { border-color: #d4af37; }
+
+        #login-admin { margin-top: 100px; }
+        .badge { background: #d4af37; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        hr { border: 0; border-top: 1px solid #333; margin: 30px 0; }
     </style>
 </head>
 <body>
+
     <h1>Painel do Gerente</h1>
     
-    <div id="info-lucro" style="margin-bottom: 20px; font-weight: bold; color: #d4af37;">
-        LUCRO TOTAL: R$ <span id="val-lucro">0.00</span>
-    </div>
-
     <div id="login-admin">
-        <input type="password" id="pass-admin" placeholder="Senha do Gerente">
-        <button onclick="carregar()">ACESSAR PAINEL</button>
+        <div style="background: #111; padding: 30px; border-radius: 15px; border: 1px solid #d4af37; display: inline-block;">
+            <p>Digite a senha mestra para acessar:</p>
+            <input type="password" id="pass-admin" placeholder="Senha Administrativa">
+            <br><br>
+            <button onclick="carregar()">ENTRAR NO SISTEMA</button>
+        </div>
     </div>
 
     <div id="painel" style="display:none">
-        <h3>SOLICITAÇÕES DE SAQUE</h3>
-        <div id="lista-saques"></div>
+        
+        <div class="stats-container">
+            <div class="stat-box">
+                LUCRO LÍQUIDO (CASA)
+                <span id="val-lucro">R$ 0.00</span>
+            </div>
+            <div class="stat-box">
+                PLAYERS ATIVOS
+                <span id="val-players" style="color: #d4af37;">0</span>
+            </div>
+        </div>
+
+        <h3>🚨 SOLICITAÇÕES DE SAQUE <span id="count-saques" class="badge">0</span></h3>
+        <div id="lista-saques" style="max-width: 600px; margin: 0 auto;"></div>
+        
         <hr>
-        <h3>LISTA DE USUÁRIOS</h3>
-        <div id="lista-usuarios"></div>
+
+        <h3>👥 GESTÃO DE USUÁRIOS</h3>
+        <div id="lista-usuarios" style="max-width: 700px; margin: 0 auto;"></div>
     </div>
 
     <script>
         let senhaGlobal = "";
+
+        // Função para carregar tudo
         async function carregar() {
             senhaGlobal = document.getElementById('pass-admin').value;
-            const res = await fetch('/api/admin/list', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ senha: senhaGlobal })
-            });
-            const d = await res.json();
-            if(d.success) {
-                document.getElementById('login-admin').style.display = 'none';
-                document.getElementById('painel').style.display = 'block';
-                document.getElementById('val-lucro').innerText = d.lucroBanca.toFixed(2);
-
-                // LISTA DE SAQUES
-                const listaSaques = document.getElementById('lista-saques');
-                listaSaques.innerHTML = d.saques.length === 0 ? "<p>Nenhum saque pendente</p>" : "";
-                d.saques.forEach(s => {
-                    listaSaques.innerHTML += `
-                        <div class="saque-card">
-                            <div style="text-align:left">
-                                <b>Usuário: ${s.user}</b><br>
-                                <span style="color:#2ecc71">Valor: R$ ${s.valor.toFixed(2)}</span><br>
-                                <small>PIX: ${s.pix}</small>
-                            </div>
-                            <button class="btn-pago" onclick="confirmarPagamento('${s._id}')">JÁ PAGUEI</button>
-                        </div>`;
+            
+            try {
+                const res = await fetch('/api/admin/list', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ senha: senhaGlobal })
                 });
+                const d = await res.json();
 
-                // LISTA DE USUÁRIOS
-                const list = document.getElementById('lista-usuarios');
-                list.innerHTML = "";
-                d.users.forEach(u => {
-                    list.innerHTML += `
-                        <div class="card">
-                            <div><b>${u.user}</b><br>Saldo: R$ ${u.saldo.toFixed(2)}</div>
-                            <div>
-                                <input type="number" id="v-${u.user}" value="10" style="width:50px">
-                                <button onclick="addBonus('${u.user}')">BÔNUS</button>
-                            </div>
-                        </div>`;
-                });
-            } else { alert("Senha errada!"); }
+                if(d.success) {
+                    document.getElementById('login-admin').style.display = 'none';
+                    document.getElementById('painel').style.display = 'block';
+                    
+                    // Atualiza Lucro e Total de Players
+                    document.getElementById('val-lucro').innerText = `R$ ${d.lucroBanca.toFixed(2)}`;
+                    document.getElementById('val-players').innerText = d.users.length;
+
+                    // LISTA DE SAQUES
+                    const listaSaques = document.getElementById('lista-saques');
+                    document.getElementById('count-saques').innerText = d.saques.length;
+                    listaSaques.innerHTML = d.saques.length === 0 ? "<p style='color:gray'>Nenhum saque pendente no momento.</p>" : "";
+                    
+                    d.saques.forEach(s => {
+                        listaSaques.innerHTML += `
+                            <div class="saque-card">
+                                <div style="text-align:left">
+                                    <b style="color:#d4af37">${s.user.toUpperCase()}</b><br>
+                                    <span style="font-size: 18px; font-weight:bold;">R$ ${s.valor.toFixed(2)}</span><br>
+                                    <small>PIX: ${s.pix}</small>
+                                </div>
+                                <div>
+                                    <button class="btn-pago" onclick="confirmarPagamento('${s._id}')">PAGO</button>
+                                    <button class="btn-recusar" onclick="recusarSaque('${s._id}')">✖</button>
+                                </div>
+                            </div>`;
+                    });
+
+                    // LISTA DE USUÁRIOS
+                    const listUsers = document.getElementById('lista-usuarios');
+                    listUsers.innerHTML = "";
+                    d.users.forEach(u => {
+                        listUsers.innerHTML += `
+                            <div class="card">
+                                <div style="text-align:left">
+                                    <b>${u.user}</b> <small style="color:gray">(${u.email || 'sem email'})</small><br>
+                                    Saldo: <span style="color:#2ecc71">R$ ${u.saldo.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                    <input type="number" id="v-${u.user}" value="10" style="width:60px">
+                                    <button onclick="addBonus('${u.user}')">MANDAR BÔNUS</button>
+                                </div>
+                            </div>`;
+                    });
+                } else {
+                    alert("Acesso Negado: Senha Incorreta.");
+                }
+            } catch (err) {
+                alert("Erro ao conectar com o servidor.");
+            }
         }
 
+        // Ações do Gerente
         async function confirmarPagamento(id) {
-            if(!confirm("Você já fez o PIX para o cliente?")) return;
+            if(!confirm("Você confirma que já realizou o PIX para o cliente?")) return;
             await fetch('/api/admin/pagar-saque', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ senha: senhaGlobal, id: id })
+                body: JSON.stringify({ senha: senhaGlobal, id: id, status: 'Pago' })
+            });
+            carregar();
+        }
+
+        async function recusarSaque(id) {
+            if(!confirm("Deseja recusar este saque? O valor voltará para o player.")) return;
+            await fetch('/api/admin/pagar-saque', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ senha: senhaGlobal, id: id, status: 'Recusado' })
             });
             carregar();
         }
 
         async function addBonus(user) {
             const v = document.getElementById(`v-${user}`).value;
-            await fetch('/api/admin/bonus', {
+            const res = await fetch('/api/admin/bonus', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ senha: senhaGlobal, user: user, valor: parseFloat(v) })
             });
-            carregar();
+            const data = await res.json();
+            if(data.success) {
+                alert("Bônus enviado com sucesso!");
+                carregar();
+            }
         }
     </script>
 </body>
