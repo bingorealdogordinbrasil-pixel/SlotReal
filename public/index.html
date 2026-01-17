@@ -15,7 +15,7 @@
         .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, #a68a2d 100%); border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
         .btn-white { background: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; color: #000; text-transform: uppercase; font-size: 11px; }
 
-        .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 90px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+        .roleta-container { position: relative; width: 92%; max-width: 360px; margin: 20px auto; overflow: hidden; background: #000; border: 3px solid var(--gold); border-radius: 20px; height: 95px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
         
         #grid { 
             display: flex; 
@@ -23,13 +23,14 @@
             position: absolute; 
             left: 0; 
             height: 100%; 
-            width: max-content;
+            width: max-content; /* Impede que os itens sumam */
             transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); 
             will-change: transform;
         }
 
         .cell { 
             min-width: 80px; 
+            max-width: 80px;
             height: 70px; 
             margin: 0 5px; 
             border-radius: 12px; 
@@ -38,8 +39,9 @@
             justify-content: center; 
             font-weight: 800; 
             color: #000; 
-            flex-shrink: 0; 
+            flex-shrink: 0; /* IMPEDE QUE O QUADRADINHO FIQUE PRETO/ESPREMIDO */
             font-size: 14px; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
         }
 
         .seletor { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: #fff; z-index: 10; box-shadow: 0 0 15px #fff; }
@@ -74,9 +76,9 @@
                 <p onclick="toggleA(true)" style="font-size:12px; cursor:pointer; margin-top:20px">Cadastrar-se</p>
             </div>
             <div id="reg-box" style="display:none">
-                <input type="text" id="ru" placeholder="Novo Usuário">
-                <input type="email" id="re" placeholder="Seu E-mail">
-                <input type="password" id="rp" placeholder="Nova Senha">
+                <input type="text" id="ru" placeholder="Usuário">
+                <input type="email" id="re" placeholder="E-mail">
+                <input type="password" id="rp" placeholder="Senha">
                 <button class="btn-gold" style="width:100%; margin-top:10px" onclick="handleAuth('reg')">CRIAR CONTA</button>
                 <p onclick="toggleA(false)" style="font-size:12px; cursor:pointer; margin-top:20px">Fazer Login</p>
             </div>
@@ -132,51 +134,43 @@
     function openM(id){ document.getElementById(id).style.display='block'; document.getElementById('ov').style.display='block'; }
     function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.style.display='none'); document.getElementById('ov').style.display='none'; }
 
-    // FUNÇÃO DE AUTENTICAÇÃO ATUALIZADA
     async function handleAuth(type) {
         const u = type==='login' ? document.getElementById('u').value : document.getElementById('ru').value;
         const p = type==='login' ? document.getElementById('p').value : document.getElementById('rp').value;
-        
         let payload = { user: u, pass: p };
-
-        if (type === 'reg') {
+        
+        if(type === 'reg') {
             const e = document.getElementById('re').value;
-            if (!e.includes('@')) return toast("E-mail inválido!");
-            payload.email = e; // Adiciona o e-mail apenas no registro
+            if(!e.includes('@')) return toast("E-mail inválido!");
+            payload.email = e;
         }
 
         const res = await fetch(type==='login' ? '/auth/login' : '/auth/register', {
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify(payload)
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
         });
-
         const d = await res.json();
         if(d.success) {
             if(type==='login') {
-                state.u=d.user; state.s=d.saldo; state.b=d.bets && d.bets.length === 8 ? d.bets : [0,0,0,0,0,0,0,0];
+                state.u=d.user; state.s=d.saldo; state.b=d.bets || [0,0,0,0,0,0,0,0];
                 initGame();
-            } else { 
-                toast("Conta criada!"); 
-                toggleA(false); 
-            }
+            } else { toast("Conta criada!"); toggleA(false); }
         } else toast(d.msg || "Erro!");
     }
 
     function initGame() {
         document.getElementById('auth-screen').style.display='none';
         document.getElementById('game-screen').style.display='block';
-        const g = document.getElementById('grid'); 
-        g.innerHTML = '';
-        for(let i=0; i<300; i++){
+        const g = document.getElementById('grid'); g.innerHTML = '';
+        
+        for(let i=0; i<400; i++){
             const c=document.createElement('div'); 
             c.className='cell'; 
             c.style.background=CORES[i%8]; 
             c.innerText='R$ 5'; 
             g.appendChild(c);
         }
-        const area = document.getElementById('bet-grid'); 
-        area.innerHTML = '';
+
+        const area = document.getElementById('bet-grid'); area.innerHTML = '';
         CORES.forEach((c,i) => {
             const d = document.createElement('div'); d.className='bet-card'; d.id=`card-${i}`;
             d.style.borderBottomColor = c;
@@ -190,8 +184,7 @@
             };
             area.appendChild(d);
         });
-        updateUI(); 
-        setInterval(sync, 1000);
+        updateUI(); setInterval(sync, 1000);
     }
 
     async function sync() {
@@ -200,22 +193,26 @@
             const d = await res.json();
             document.getElementById('timer').innerText = `00:${d.segundos.toString().padStart(2,'0')}`;
             if(d.segundos === 30 && !rodando) spin();
-        } catch(e) {}
+        } catch(e){}
     }
 
     async function spin() {
+        if(rodando) return;
         rodando = true;
         if(sSpin) { sSpin.loop = true; sSpin.play().catch(()=>{}); }
-        const d = await (await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})})).json();
-        const g = document.getElementById('grid');
         
-        let larguraItem = 90; 
-        let cur = Math.round(pos / larguraItem) % 8;
+        const res = await fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u})});
+        const d = await res.json();
+        
+        const g = document.getElementById('grid');
+        const itemW = 90; // 80px + 10px margem
+        
+        let cur = Math.round(pos / itemW) % 8;
         let diff = d.corAlvo - cur;
         if(diff <= 0) diff += 8;
         
-        pos += (64 + diff) * larguraItem;
-        g.style.transform = `translateX(-${pos - 135}px)`;
+        pos += (80 + diff) * itemW; // Dá pelo menos 10 voltas
+        g.style.transform = `translate3d(-${pos - 135}px, 0, 0)`;
 
         setTimeout(() => {
             if(sSpin) { sSpin.pause(); sSpin.currentTime = 0; }
@@ -238,14 +235,14 @@
 
     async function getPix() {
         const valor = document.getElementById('v-pix').value;
-        if(valor < 5) return toast("O valor mínimo de depósito é R$ 5");
+        if(valor < 5) return toast("Mínimo R$ 5");
         const res = await fetch('/gerar-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:valor})});
         const d = await res.json();
         if(d.success) {
             document.getElementById('qr-img').src = `data:image/jpeg;base64,${d.qr}`;
             document.getElementById('qr-area').setAttribute('data-c', d.code);
             document.getElementById('qr-area').style.display='block';
-        } else toast(d.msg || "Erro!");
+        } else toast(d.msg);
     }
 
     function copy(){ navigator.clipboard.writeText(document.getElementById('qr-area').getAttribute('data-c')); toast("Copiado!"); }
@@ -253,12 +250,12 @@
     async function handleSaque() {
         const v = document.getElementById('v-saq').value;
         const pix = document.getElementById('c-pix').value;
-        if(!pix) return toast("Informe o PIX!");
+        if(!pix) return toast("PIX vazio!");
         const res = await fetch('/api/saque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:state.u,valor:v,pix:pix})});
         const d = await res.json();
         if(d.success) { 
             state.s = Number((state.s - v).toFixed(2)); 
-            updateUI(); closeM(); toast("Solicitado!"); 
+            updateUI(); closeM(); toast("Pedido enviado!"); 
         } else toast(d.msg);
     }
 </script>
